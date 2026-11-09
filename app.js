@@ -33,10 +33,22 @@ function render(f,db){
   if(!f&&now()<S.lock)return;
   if(db&&/^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement||{}).tagName)){S.pend=true;return;}
   S.pend=false;
-  const a=document.activeElement,id=a&&a.id,pos=a&&a.selectionStart;
+  const a=document.activeElement,id=a&&a.id,pos=a&&a.selectionStart,old=document.getElementById("odo");
   $("#app").innerHTML=!S.code?home():!S.room?`<p class="c">読み込み中（ルームが無い場合は<button data-act="leave">戻る</button>）</p>`:room();
-  if(id){const e=document.getElementById(id);if(e){e.focus();try{e.setSelectionRange(pos,pos)}catch{}}}}
+  if(id){const e=document.getElementById(id);if(e){e.focus();try{e.setSelectionRange(pos,pos)}catch{}}}
+  hookOdo(old);}
 
+function odoHTML(v,N){const s=String(Math.max(0,v)).padStart(N," ");let h="";
+  for(let i=0;i<N;i++){const b=s[i]===" ";if(i>0&&(N-i)%3===0)h+=`<span class="odc ${s[i-1]===" "?"off":""}" data-p="${i}">,</span>`;
+    h+=`<span class="od ${b?"off":""}"><span class="odi" style="transform:translateY(-${b?10:s[i]}em)">${"0123456789 ".split("").map(c=>`<i>${c===" "?"&nbsp;":c}</i>`).join("")}</span></span>`;}
+  return h;}
+function updateOdo(el,v){const N=+el.dataset.n,s=String(Math.max(0,v)).padStart(N," "),was=+el.dataset.v;
+  el.querySelectorAll(".od").forEach((c,i)=>{c.classList.toggle("off",s[i]===" ");c.firstChild.style.transform=`translateY(-${s[i]===" "?10:s[i]}em)`;});
+  el.querySelectorAll(".odc").forEach(c=>c.classList.toggle("off",s[+c.dataset.p-1]===" "));
+  el.dataset.v=v;if(v!==was){el.classList.remove("up","down");void el.offsetWidth;el.classList.add(v>was?"up":"down");clearTimeout(S.odoT);S.odoT=setTimeout(()=>el.classList.remove("up","down"),1600);}}
+function hookOdo(old){let el=document.getElementById("odo");if(!el)return;const t=+el.dataset.t;
+  if(old&&+old.dataset.n>=String(t).length){el.replaceWith(old);el=old;}
+  void el.offsetWidth;updateOdo(el,t);S.odoPrev=t;}
 const home=()=>`<div class="hero"><h1>HIPPODROME</h1><p>身近なものを、賭けの対象に。架空通貨のみ使用。</p></div>
 <div class="card" style="max-width:420px;margin:auto"><label>名前<input id="in-name" data-m="name" value="${esc(S.name)}" maxlength="12"></label>
 <button class="primary" data-act="create">ルームを作る</button><hr style="border:0;border-top:1px solid #e6ece7;margin:16px 0">
@@ -50,13 +62,14 @@ function room(){
   const lab={config:"部屋設定中",setup:"準備中",open:"発売中",closed:"発売締切",settled:"結果確定"}[st];
   const reqs=Object.entries(r.requests||{}),pend=reqs.filter(([,q])=>q.status==="pending"),mine=reqs.filter(([,q])=>q.uid===uid).sort((a,b)=>b[1].at-a[1].at).slice(0,3);
   const ts=Object.entries(r.tickets||{}).filter(([,t])=>t.uid===uid).sort((a,b)=>b[1].at-a[1].at),net=p=>(p.balance||0)+(p.bank||0)-(p.debt||0);
+  const bal=(me&&me.balance)||0,pv=S.odoPrev??bal,ON=Math.max(String(pv).length,String(bal).length);
   const main=st==="config"?(isM?config():`<div class="card c">マスターが部屋の設定中です</div>`):st==="setup"?(isM?setup():`<div class="card c">マスターがラウンドの準備中です</div>`)
     :(dl?`<div class="banner">まもなく発売終了　締切まで <span class="cd2" data-cd>${cdt()}</span></div>`:"")+board()+(st==="open"&&me?betForm():"")+oddsTable()+(isM&&(st==="open"||st==="closed")?control():"")+(st==="settled"?resultView():"");
   return `<div class="bar"><div><b>${esc(r.title||"ルーム")}</b> <span class="small" style="color:#cfe">${r.type==="roulette"?"当たり外れ型":r.type?"順位型":""}</span></div>
   <div>${dl?`<span class="cd" data-cd>${cdt()}</span>`:""}<span class="pill ${st}">${lab}</span></div></div>
   <div class="grid"><main>${main}</main><aside>
   <div class="card"><div class="small">ルームコード <b>${S.code}</b> ${isM?"(マスター)":""} <button style="float:right;padding:2px 8px" data-act="leave">退出</button></div>
-  <div class="small" style="margin-top:8px">手持ち残高</div><div class="amt">${yen(me&&me.balance)}</div>
+  <div class="small" style="margin-top:8px">手持ち残高</div><div class="amt"><span id="odo" class="odo" data-n="${ON}" data-v="${pv}" data-t="${bal}">${odoHTML(pv,ON)}</span><span class="odu">円</span></div>
   <div class="small">口座残高 ${yen(me&&me.bank)}　借入残高 ${yen(me&&me.debt)}</div><button data-act="atmopen" style="margin-top:8px">ATMを利用する</button></div>
   ${mine.length?`<div class="card"><h3>ご融資の申請</h3>${mine.map(([,q])=>`<div class="small">${yen(q.amount)}　${{pending:"承認待ち",approved:"承認",rejected:"却下"}[q.status]}</div>`).join("")}</div>`:""}
   ${isM&&pend.length?`<div class="card"><h3>ご融資の申請（${pend.length}件）</h3>${pend.map(([id,q])=>`<div class="rq"><span>${esc(q.name)} / <b>${yen(q.amount)}</b></span><button class="ok" data-act="apv" data-v="${id}">承認</button><button class="red" data-act="rej" data-v="${id}">却下</button></div>`).join("")}</div>`:""}
@@ -65,13 +78,28 @@ function room(){
   </aside></div>${u.modal?modal():""}${u.atm?atm():""}`;
 }
 
-function tk(t,hide,id){const T=TYPES[t.type],n=(t.cs||[1]).length,disp=t.disp??(t.sel||[]).map(i=>i+1).join("-"),d=new Date(t.at||now()),p2=x=>String(x).padStart(2,"0"),
-  ts=`${p2(d.getMonth()+1)}/${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`,pay=t.payout,w=pay>0&&!hide;
-  return `<div class="tkt tk-${t.type}"><div class="tkt-h"><span>HIPPODROME</span><span>${ts}</span></div>
-  <div class="tkt-t">${t.type==="r"?"投票券":T.n}<small>${esc(t.meth||"")}</small></div><div class="tkt-b">${esc(disp)}</div>
-  <div class="tkt-m"><span>${n}点</span><span>￥${(t.stake||0).toLocaleString()}</span></div><div class="tkt-bar"></div>
-  <div class="tkt-s">${esc(S.room.title||"")}　No.${id?id.slice(-8).toUpperCase():"--------"}</div>
-  ${hide||pay==null?"":w?`<div class="tkt-r">払戻金 ￥${pay.toLocaleString()}</div><span class="stamp">的中</span>`:`<div class="tkt-r x">ハズレ</div>`}</div>`;}
+const VT={win:["WIN","単勝"],place:["PLACE","複勝"],quinella:["QUINELLA","馬連"],exacta:["EXACTA","馬単"],wide:["WIDE","ワイド"],trio:["TRIO","3連複"],trifecta:["TRIFECTA","3連単"],r:["BET","投票"]};
+function qr(seed){let h=7;for(const c of String(seed))h=(h*31+c.charCodeAt(0))>>>0;const N=21,fz=(x,y)=>(x<8&&y<8)||(x>12&&y<8)||(x<8&&y>12),rn=()=>((h=(h*1664525+1013904223)>>>0)>>>16)%2;let d="";
+  for(let y=0;y<N;y++){let x=0;while(x<N){if(!fz(x,y)&&rn()){let e=x;while(e+1<N&&!fz(e+1,y)&&rn())e++;d+=`M${x} ${y}h${e-x+1}v1h-${e-x+1}z`;x=e+1;}else x++;}}
+  const f=(x,y)=>`<rect x="${x}" y="${y}" width="7" height="7"/><rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#f6f8f6"/><rect x="${x+2}" y="${y+2}" width="3" height="3"/>`;
+  return `<svg viewBox="0 0 21 21" shape-rendering="crispEdges"><path d="${d}"/>${f(0,0)}${f(14,0)}${f(0,14)}</svg>`;}
+const sn=id=>{let h=0;for(const c of String(id))h=(h*131+c.charCodeAt(0))>>>0;const g=n=>{let x="";for(let i=0;i<n;i++){h=(h*1103515245+12345)>>>0;x+=(h>>>16)%10;}return x;};return [g(13),g(13),g(8),g(6)].join(" ");};
+function tk(t,hide,id){const T=TYPES[t.type],v=VT[t.type],rl=t.type==="r",cs=t.cs||[{s:t.sel||[]}],n=cs.length,per=t.per||t.stake,tot=t.stake||0,k=T?T.k:1,ord=T&&T.o,
+  m=t.m||{k:n===1?"normal":"text",sel:cs[0].s||[]},sel=m.sel||[],ax=m.ax||[],pt=m.pt||[],d=new Date(t.at||now()),pay=t.payout,w=pay>0&&!hide,sheets=Math.round(tot/10),N1=i=>i+1,
+  grid=a=>`<div class="jt-g">${ents().map((e,i)=>`<span class="${a.includes(i)?"s":""}">${i+1}</span>`).join("")}</div>`,
+  amt=`<span class="jt-a">☆☆☆${per.toLocaleString()}円</span>`,star=(x,c)=>"★".repeat(Math.max(1,c-String(x).length));let r;
+  if(rl)r=`<b class="jt-hn">${esc(t.disp)}</b>${amt}`;
+  else if(m.k==="text")r=`<b class="jt-c" style="font-size:5cqw">${esc(t.disp)}</b><div class="jt-i">組合せ数 <b>${n}</b></div>${amt}`;
+  else if(m.k==="normal"&&k===1)r=`<div class="jt-row"><span class="jt-bx">${sel[0]+1}</span><b class="jt-hn">${esc((ents()[sel[0]]||{}).name||"")}</b></div>${amt}`;
+  else if(m.k==="normal")r=`<b class="jt-c">${sel.map(N1).join(ord?"→":"-")}</b>${amt}`;
+  else if(m.k==="box")r=`<div class="jt-lb">ボックス</div>${grid(sel)}<div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;
+  else r=`<div class="jt-lb">${ord?(m.pos+1)+"着":""}流し</div><div class="jt-row jt-nag"><b class="jt-c">${ax.map(N1).join("-")}</b><i>▶</i>${grid(pt)}</div><div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;
+  return `<div class="jtw"><div class="jt"><div class="jt-band"></div>
+  <div class="jt-l"><div class="jt-d">${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日</div><div class="jt-v">${esc(S.code)}</div><div class="jt-rc"><b>${S.room.round||1}</b>レース</div>
+  <div class="jt-q">${qr((id||"preview")+"a")}${qr((id||"preview")+"b")}</div><div class="jt-tt">${esc(S.room.title||"")}</div><div class="jt-f">HIPPODROME　${d.getMonth()+1}月${d.getDate()}日</div></div>
+  <div class="jt-mid"><small>${v[0]}</small>${k>=2&&m.k==="normal"?"<em>普通</em>":""}<span>${v[1]}</span><small>${v[0]}</small></div>
+  <div class="jt-r">${r}</div><div class="jt-tot">合計 ${star(sheets,6)}${sheets}枚 ${star(tot.toLocaleString(),7)}${tot.toLocaleString()}円</div><div class="jt-no">${sn(id||"preview")}</div>${w?`<span class="stamp">的中</span>`:""}</div>
+  ${hide||pay==null?"":w?`<div class="jt-res">払戻金 ￥${pay.toLocaleString()}</div>`:`<div class="jt-res x">ハズレ</div>`}</div>`;}
 
 function draftOdds(d){const rate=Number(d.rate)||0.8;if(d.mode!=="prob")return d.ent.map(e=>Number(e.odds));
   const ws=d.ent.map(e=>Number(e.w)||0);
@@ -81,7 +109,7 @@ function setup(){const r=S.room;
   if(!r.type)return `<div class="card"><h2>このラウンドのタイプを選択</h2><div class="two">
   <button class="big" data-act="settype" data-v="ranking"><b>順位型</b><span>競馬のように着順で的中が決まる。全券種のオッズを自動生成</span></button>
   <button class="big" data-act="settype" data-v="roulette"><b>当たり外れ型</b><span>ルーレットのように選択肢ごとに当たり外れが出る</span></button></div></div>`;
-  const rl=isRl(),d=S.ui.draft||(S.ui.draft={title:r.title||"",ent:ents().map(e=>({...e})),rate:r.rate??0.8,mode:"odds"}),pm=d.mode==="prob",od=pm?draftOdds(d):[];
+  const rl=isRl(),d=S.ui.draft||(S.ui.draft={title:r.title||"",ent:ents().map(e=>({name:e.name,odds:e.odds,w:e.w??""})),rate:r.rate??0.8,mode:r.pmode?"prob":"odds"}),pm=d.mode==="prob",od=pm?draftOdds(d):[];
   return `<div class="card"><h2>${rl?"選択肢と払戻倍率":"出走馬とオッズ"}</h2>
   <label>タイトル<input id="in-title" data-m="title" value="${esc(d.title)}"></label>
   <div class="tabs"><button class="tab ${pm?"":"on"}" data-act="smode" data-v="odds">オッズで入力</button><button class="tab ${pm?"on":""}" data-act="smode" data-v="prob">勝率で入力（オッズを自動計算）</button></div>
@@ -91,7 +119,7 @@ function setup(){const r=S.room;
   ${pm?`<td><input id="ew${i}" data-m="ew:${i}" type="number" step="any" min="0" value="${e.w??""}" style="width:90px"></td><td><b id="od${i}">${od[i]>=1.1?od[i].toFixed(1):"-"}</b></td>`
   :`<td><input id="eo${i}" data-m="eo:${i}" type="number" step="0.1" value="${e.odds??""}" style="width:100px"></td>`}
   <td><button class="red" data-act="delent" data-v="${i}">削除</button></td></tr>`).join("")}</table>
-  <button data-act="addent">追加</button>
+  <button data-act="addent">追加</button><button class="gray" data-act="clr">出走馬・オッズをクリア</button>
   <label>払戻率（0.5〜1）<input id="in-rate" data-m="rate" type="number" step="0.01" value="${d.rate}"></label>
   <button class="primary" data-act="start">発売開始</button> <button data-act="settype" data-v="">タイプを選び直す</button></div>`;}
 
@@ -110,6 +138,7 @@ function genCombos(){const u=S.ui;if(isRl())return u.sel.length===1?[u.sel]:[];c
   if(ax.length<1||ax.length>k-1||pt.length<k-ax.length)return [];
   return combs(pt,k-ax.length).map(c=>[...ax,...c]);}
 const methOf=()=>{if(isRl())return "";const T=TYPES[S.ui.type];return !T||T.k===1?"通常":{normal:"通常",box:"ボックス",nagashi:"流し"}[S.ui.method];};
+const mOf=()=>{const u=S.ui,T=TYPES[u.type];return {k:isRl()||!T||T.k===1?"normal":u.method,sel:[...u.sel],ax:[...u.axis],pt:[...u.part],pos:u.pos};};
 function dispOf(){const u=S.ui,n=i=>i+1;if(isRl())return u.sel.length?ents()[u.sel[0]].name:"";const T=TYPES[u.type],m=T.k===1?"normal":u.method;
   if(m==="normal")return u.sel.map(n).join(T.o?"→":"-");if(m==="box")return u.sel.map(n).join("-");
   return `${T.o?(u.pos+1)+"着軸 ":"軸 "}${u.axis.map(n).join("-")} / 相手 ${u.part.map(n).join("-")}`;}
@@ -135,7 +164,7 @@ function betForm(){const u=S.ui,rl=isRl(),t=rl?"r":u.type,T=TYPES[t],k=T?T.k:1,m
   <div class="row" style="gap:10px 18px"><span>点数 <b id="b-n"></b></span><span>合計 <b id="b-tot"></b></span><span>オッズ <b id="b-od"></b></span><span>的中時(1点) <b id="b-pay"></b></span></div>
   <button class="primary" id="b-go" data-act="review" ${b.n&&b.per>=100?"":"disabled"}>購入内容を確認</button></div>`;}
 
-function modal(){const u=S.ui,b=betInfo(),tkt={type:b.t,meth:methOf(),disp:dispOf(),stake:b.tot,cs:b.cs,at:now()};
+function modal(){const u=S.ui,b=betInfo(),tkt={type:b.t,meth:methOf(),disp:dispOf(),per:b.per,m:mOf(),stake:b.tot,cs:b.cs,at:now()};
   return `<div class="ov"><div class="md"><h2>購入内容のご確認</h2>${tk(tkt,true,"")}<p>1点 ${yen(b.per)} × ${b.n}点 = <b>${yen(b.tot)}</b></p>
   <p class="warn">確定後の取消はできません。残高から ${yen(b.tot)} が引き落とされます。</p>
   <button data-act="cancel">戻る</button> <button class="red" data-act="buy" style="float:right;padding:10px 18px">購入を確定する</button></div></div>`;}
@@ -214,14 +243,14 @@ async function buy(){const r=S.room,u=S.ui,b=betInfo(),t=b.t;u.modal=false;
   const cs=b.cs.map(x=>({s:x,o:getOdds(t,x)}));
   const res=await runTransaction(ref(db,`rooms/${S.code}/players/${uid}/balance`),x=>(x>=b.tot?x-b.tot:undefined));
   if(!res.committed){render();return alert("残高が足りません");}
-  await push(R("tickets"),{uid,name:S.name,type:t,meth:methOf(),disp:dispOf(),per:b.per,stake:b.tot,cs,at:now()});
+  await push(R("tickets"),{uid,name:S.name,type:t,meth:methOf(),disp:dispOf(),m:mOf(),per:b.per,stake:b.tot,cs,at:now()});
   u.sel=[];u.axis=[];u.part=[];u.stake="";render();}
 async function start(){const d=S.ui.draft,rl=isRl(),pm=d.mode==="prob";
   if(!d.ent.length||d.ent.some(e=>!String(e.name).trim()))return alert("全ての名前を入力してください");
   if(!rl&&(d.ent.length<3||d.ent.length>18))return alert("出走数は3〜18です");
   const rate=Number(d.rate);if((!rl||pm)&&!(rate>=0.5&&rate<=1))return alert("払戻率は0.5〜1で入力してください");
   const od=draftOdds(d);if(od.some(o=>!(o>=1.1)))return alert(pm?"全ての勝率を入力してください":"全てのオッズに1.1以上を入力してください");
-  await update(R(),{title:d.title.trim(),entrants:d.ent.map((e,i)=>({name:String(e.name).trim(),odds:od[i]})),rate:rate||0.8,status:"open",deadline:null});
+  await update(R(),{title:d.title.trim(),entrants:d.ent.map((e,i)=>({name:String(e.name).trim(),odds:od[i],...(pm?{w:Number(e.w)}:{})})),pmode:pm,rate:rate||0.8,status:"open",deadline:null});
   S.ui.draft=null;S.ui.sel=[];S.ui.type=null;}
 async function settle(){const r=S.room,u=S.ui;if(r.status!=="closed")return;let result;
   if(isRl())result={wins:u.wins};else{if(u.res.some(v=>v==="")||new Set(u.res).size<3)return alert("1〜3着を重複なく選んでください");result={order:u.res.map(Number)};}
@@ -239,7 +268,7 @@ const acts={
   delent:v=>{S.ui.draft.ent.splice(v,1);render();},
   start,buy,settle,
   close:async()=>{if(closing)return;closing=true;await update(R(),{status:"closed"});closing=false;},
-  next:()=>{S.ui.draft=null;S.ui.res=["","",""];S.ui.wins=[];S.ui.sel=[];S.ui.type=null;update(R(),{status:"setup",tickets:null,result:null,settledAt:null,deadline:null,type:null,entrants:null,rate:null,title:null});},
+  next:()=>{S.ui.draft=null;S.ui.res=["","",""];S.ui.wins=[];S.ui.sel=[];S.ui.type=null;update(R(),{status:"setup",tickets:null,result:null,settledAt:null,deadline:null,type:null,round:(S.room.round||1)+1});},
   type:v=>{Object.assign(S.ui,{type:v,sel:[],axis:[],part:[],pos:0});render();},
   meth:v=>{Object.assign(S.ui,{method:v,sel:[],axis:[],part:[]});render();},pos:v=>{S.ui.pos=+v;render();},tgt:v=>{S.ui.tgt=v;render();},
   pick:v=>{const u=S.ui,i=+v;if(isRl()){u.sel=[i];render();return;}const t=u.type;if(!t)return;const T=TYPES[t],m=T.k===1?"normal":u.method;
@@ -263,6 +292,7 @@ const acts={
   ot:v=>{S.ui.ot=v;S.ui.ax=0;render();},axis:v=>{S.ui.ax=+v;render();},
   cell:v=>{const[t,x]=v.split("|");Object.assign(S.ui,{type:t,method:"normal",axis:[],part:[],sel:x.split("-").map(Number)});render();const e=document.getElementById("in-stake");if(e){e.scrollIntoView({block:"center"});e.focus();}},
   cfgok:async()=>{const n=Number(S.ui.cfg);if(!(n>=1000))return alert("初期金額を入力してください");const up={initBalance:n,status:"setup"};Object.keys(S.room.players||{}).forEach(id=>up[`players/${id}/balance`]=n);await update(R(),up);},
+  clr:()=>{S.ui.draft.ent=[];update(R(),{entrants:null});render();},
   smode:v=>{S.ui.draft.mode=v;render();},
   dl:v=>update(R(),{deadline:+v>0?now()+(+v)*1000:null}),
   resp:v=>{const[j,i]=v.split("|").map(Number);S.ui.res[j]=S.ui.res[j]===i?"":i;render();},
