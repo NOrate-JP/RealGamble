@@ -32,3 +32,13 @@ table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #e6ece7;
 .pad2{display:flex;gap:12px;justify-content:center}.side{display:flex;flex-direction:column;gap:6px}.k.u{background:#3b82f6;color:#fff;border-radius:8px}.k.en{height:70px;background:#1f7a3f;color:#fff;border-radius:10px}
 .am .mb{padding:18px 8px;font-size:18px;border-radius:26px;background:linear-gradient(#fff,#e6eee6);border:2px solid #9bc}.am small{display:block;color:#3b9ad9;font-size:11px;margin-top:2px}.am .sb{padding:10px;font-size:14px;border-radius:22px}
 .banner{background:#b3261e;color:#fff;text-align:center;padding:10px;border-radius:10px;margin:10px 0}.cd2{font-family:monospace;font-size:28px;margin-left:8px}.cd2.warn{animation:bl .6s infinite alternate}.rr{margin:6px 0}.rr b{display:inline-block;width:40px}
+.ent.on2{background:#2a6fd6;color:#fff;border-color:#2a6fd6}
+.tkt{position:relative;overflow:hidden;background:#fbfbf4;border:1px solid #d9d9cc;border-radius:3px;padding:0 12px 10px;margin:10px 0;font-family:"SF Mono",Consolas,"Courier New",monospace;box-shadow:0 2px 5px rgba(0,0,0,.15)}
+.tkt::before{content:"";display:block;height:8px;margin:0 -12px 0;background:radial-gradient(circle at 6px 0,#fff 4px,transparent 4.5px) 0 0/12px 8px repeat-x}
+.tkt-h{display:flex;justify-content:space-between;margin:0 -12px;padding:3px 12px;background:#14532d;color:#fff;font-size:11px;letter-spacing:.1em}
+.tk-win .tkt-h{background:#d62828}.tk-place .tkt-h{background:#2a6fd6}.tk-quinella .tkt-h{background:#2e9e4f}.tk-exacta .tkt-h{background:#8e44ad}.tk-wide .tkt-h{background:#e08a00}.tk-trio .tkt-h{background:#0a8f8f}.tk-trifecta .tkt-h{background:#111}
+.tkt-t{font-size:20px;font-weight:bold;margin-top:8px}.tkt-t small{font-size:12px;margin-left:8px;border:1px solid #333;padding:0 5px}
+.tkt-b{font-size:24px;font-weight:bold;letter-spacing:.06em;padding:8px 0;word-break:break-all}.tkt-m{display:flex;justify-content:space-between;border-top:1px dashed #888;padding-top:6px;font-size:16px;font-weight:bold}
+.tkt-bar{height:26px;margin:8px 0 4px;background:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 4px,#111 4px 5px,transparent 5px 8px,#111 8px 11px,transparent 11px 12px)}.tkt-s{font-size:10px;color:#666}
+.tkt-r{margin-top:6px;font-size:16px;font-weight:bold;color:#b3261e}.tkt-r.x{color:#888}
+.stamp{position:absolute;right:14px;top:46px;border:3px solid #d62828;color:#d62828;font-size:26px;font-weight:bold;padding:0 10px;border-radius:6px;transform:rotate(-14deg);opacity:.85;font-family:sans-serif}
