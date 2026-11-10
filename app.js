@@ -86,6 +86,9 @@ function qr(seed){let h=7;for(const c of String(seed))h=(h*31+c.charCodeAt(0))>>
   const f=(x,y)=>`<rect x="${x}" y="${y}" width="7" height="7"/><rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#f6f8f6"/><rect x="${x+2}" y="${y+2}" width="3" height="3"/>`;
   return `<svg viewBox="0 0 21 21" shape-rendering="crispEdges"><path d="${d}"/>${f(0,0)}${f(14,0)}${f(0,14)}</svg>`;}
 const sn=id=>{let h=0;for(const c of String(id))h=(h*131+c.charCodeAt(0))>>>0;const g=n=>{let x="";for(let i=0;i<n;i++){h=(h*1103515245+12345)>>>0;x+=(h>>>16)%10;}return x;};return [g(13),g(13),g(8),g(6)].join(" ");};
+const cwid=(c,mono)=>mono?.6:/[0-9]/.test(c)?.6:c===" "?.35:/[\x00-\x7f]/.test(c)?.68:1;
+function fit(txt,fs,cls=""){const mono=/mono/.test(cls),est=[...String(txt)].reduce((a,c)=>a+cwid(c,mono),0)*10;
+  return `<svg class="fit ${cls}" viewBox="0 0 ${est.toFixed(1)} 11" style="width:min(100%,${(est/10*fs).toFixed(1)}cqw)"><text x="0" y="8.6" font-size="10" textLength="${est.toFixed(1)}" lengthAdjust="spacingAndGlyphs">${esc(txt)}</text></svg>`;}
 function tk(t,hide,id){const T=TYPES[t.type],v=VT[t.type],rl=t.type==="r",cs=t.cs||[{s:t.sel||[]}],n=cs.length,per=t.per||t.stake,tot=t.stake||0,k=T?T.k:1,ord=T&&T.o,
   m=t.m||{k:n===1?"normal":"text",sel:cs[0].s||[]},sel=m.sel||[],ax=m.ax||[],pt=m.pt||[],d=new Date(t.at||now()),pay=t.payout,w=pay>0&&!hide,sheets=Math.round(tot/10),N1=i=>i+1,
   grid=a=>`<div class="jt-g">${ents().map((e,i)=>`<span class="${a.includes(i)?"s":""}">${i+1}</span>`).join("")}</div>`,
@@ -93,14 +96,14 @@ function tk(t,hide,id){const T=TYPES[t.type],v=VT[t.type],rl=t.type==="r",cs=t.c
   if(rl)r=`<b class="jt-hn rl">${esc(t.disp)}</b>${cs[0].o?`<div class="jt-i">倍率 ×${cs[0].o.toFixed(1)}</div>`:""}${amt}`;
   else if(m.k==="text")r=`<b class="jt-c" style="font-size:5cqw">${esc(t.disp)}</b><div class="jt-i">組合せ数 <b>${n}</b></div>${amt}`;
   else if(m.k==="normal"&&k===1)r=`<div class="jt-row"><span class="jt-bx">${sel[0]+1}</span><b class="jt-hn">${esc((ents()[sel[0]]||{}).name||"")}</b></div>${amt}`;
-  else if(m.k==="normal")r=`<b class="jt-c">${sel.map(N1).join(ord?"→":"-")}</b>${amt}`;
+  else if(m.k==="normal")r=(ord?`<div class="jt-row jt-ob">${sel.map(i=>`<span class="jt-bx2">${i+1}</span>`).join("<i>▶</i>")}</div>`:`<b class="jt-c">${sel.map(N1).join("-")}</b>`)+amt;
   else if(m.k==="box")r=`<div class="jt-lb">ボックス</div>${grid(sel)}<div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;
   else r=`<div class="jt-lb">${ord?(m.pos+1)+"着":""}流し</div><div class="jt-row jt-nag"><b class="jt-c">${ax.map(N1).join("-")}</b><i>▶</i>${grid(pt)}</div><div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;
-  return `<div class="jtw"><div class="jt"><div class="jt-band"></div>
-  <div class="jt-l"><div class="jt-d">${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日</div><div class="jt-v">${esc(S.code)}</div><div class="jt-rc"><b>${S.room.round||1}</b>レース</div>
+  return `<div class="jtw"><div class="jt">
+  <div class="jt-l"><div class="jt-d">${fit(`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`,3.4)}</div><div class="jt-v">${fit(S.code,5.6)}</div><div class="jt-rc"><b>${S.room.round||1}</b>レ<span class="jt-su">ース</span></div>
   <div class="jt-q">${qr((id||"preview")+"a")}${qr((id||"preview")+"b")}</div><div class="jt-tt">${esc(S.room.title||"")}</div><div class="jt-f">HIPPODROME</div></div>
   <div class="jt-mid"><small>${v[0]}</small>${k>=2&&m.k==="normal"?"<em>普通</em>":""}<span>${v[1]}</span><small>${v[0]}</small></div>
-  <div class="jt-rt"><div class="jt-r">${r}</div><div class="jt-tot">合計 ${star(sheets,6)}${sheets}枚 ${star(tot.toLocaleString(),7)}${tot.toLocaleString()}円</div><div class="jt-no">${sn(id||"preview")}</div></div>${w?`<span class="stamp">的中</span>`:""}</div>
+  <div class="jt-rt"><div class="jt-r">${r}</div><div class="jt-tot">${fit(`合計 ${star(sheets,6)}${sheets}枚 ${star(tot.toLocaleString(),7)}${tot.toLocaleString()}円`,3.1,"r")}</div><div class="jt-no">${fit(sn(id||"preview"),2.2,"r mono")}</div></div>${w?`<span class="stamp">的中</span>`:""}</div>
   ${hide||pay==null?"":w?`<div class="jt-res">払戻金 ￥${pay.toLocaleString()}</div>`:`<div class="jt-res x">ハズレ</div>`}</div>`;}
 
 const jit=()=>1+(Math.random()-.5)*.16,fmtO=o=>o<100?Math.floor(o*10)/10:Math.floor(o);
