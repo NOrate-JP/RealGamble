@@ -89,3 +89,8 @@ background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
 .scr-in{padding:10px}.disp{padding:6px 14px;margin:4px 0;font-size:18px}.err{min-height:16px;font-size:12px;margin:0 0 4px}
 .k{height:40px}.pad{gap:5px}.k.u{height:40px}.k.en{height:80px}
 .chk{display:flex;align-items:center;gap:8px;margin:12px 0 0}.chk input{width:20px;height:20px;margin:0}.chk label{display:inline;margin:0;font-size:14px;color:#1d2a22}
+
+.jt{background:#f6f8f6}
+.jt-wm{position:absolute;inset:0;z-index:-2;overflow:hidden;pointer-events:none}.jt-wm i{position:absolute;width:19cqw;height:19cqw;background:#c9ecdf;-webkit-mask:url(logo.svg) center/contain no-repeat;mask:url(logo.svg) center/contain no-repeat}
+.jt-l{gap:1cqw}.jt-q svg{width:10.5cqw;height:10.5cqw}.jt-tt{font-size:3.2cqw}
+.logo{width:76px;height:76px;display:block;margin:0 auto 4px}.logo-s{width:26px;height:26px;vertical-align:middle;margin-right:8px;filter:brightness(0) invert(1)}.hero .sub{color:#14532d;letter-spacing:.35em;font-size:14px;margin-bottom:6px}

@@ -51,7 +51,7 @@ function hookOdo(old){let el=document.getElementById("odo");if(!el)return;const 
   void el.offsetWidth;updateOdo(el,t);S.odoPrev=t;}
 function grantCard(){const u=S.ui;return `<div class="card"><h3>残高の付与（マスター）</h3><div>${Object.entries(S.room.players||{}).map(([id,p])=>`<button class="ent ${u.gt===id?"on":""}" data-act="gpick" data-v="${id}">${esc(p.name)}</button>`).join("")}<button class="ent ${u.gt==="all"?"on":""}" data-act="gpick" data-v="all">全員</button></div>
   <div class="row"><input id="in-ga" data-m="ga" type="number" step="100" placeholder="付与する金額" value="${u.ga}"><button class="ok" data-act="grant">付与する</button></div><p class="small">借入にはなりません</p></div>`;}
-const home=()=>`<div class="hero"><h1>HIPPODROME</h1><p>身近なものを、賭けの対象に。架空通貨のみ使用。</p></div>
+const home=()=>`<div class="hero"><img class="logo" src="logo.svg" alt=""><h1>NQKEIBA</h1><div class="sub">NQ競馬</div><p>身近なものを、賭けの対象に。架空通貨のみ使用。</p></div>
 <div class="card" style="max-width:420px;margin:auto"><label>名前<input id="in-name" data-m="name" value="${esc(S.name)}" maxlength="12"></label>
 <button class="primary" data-act="create">ルームを作る</button><hr style="border:0;border-top:1px solid #e6ece7;margin:16px 0">
 <label>ルームコード<input id="in-code" data-m="hcode" value="${esc(S.hcode)}" maxlength="8"></label><button class="primary" style="background:#fff;color:#14532d" data-act="join">参加する</button></div>`;
@@ -67,7 +67,7 @@ function room(){
   const bal=(me&&me.balance)||0,pv=S.odoPrev??bal,ON=Math.max(String(pv).length,String(bal).length);
   const main=st==="config"?(isM?config():`<div class="card c">マスターが部屋の設定中です</div>`):st==="setup"?(isM?setup():`<div class="card c">マスターがラウンドの準備中です</div>`)
     :(dl?`<div class="banner">まもなく発売終了　締切まで <span class="cd2" data-cd>${cdt()}</span></div>`:"")+board()+(st==="open"&&me?betForm():"")+oddsTable()+(isM&&(st==="open"||st==="closed")?control():"")+(st==="settled"?resultView():"");
-  return `<div class="bar"><div><b>${esc(r.title||"ルーム")}</b> <span class="small" style="color:#cfe">${r.type==="roulette"?"当たり外れ型":r.type?"順位型":""}</span></div>
+  return `<div class="bar"><div><img class="logo-s" src="logo.svg" alt=""><b>${esc(r.title||"ルーム")}</b> <span class="small" style="color:#cfe">${r.type==="roulette"?"当たり外れ型":r.type?"順位型":""}</span></div>
   <div>${dl?`<span class="cd" data-cd>${cdt()}</span>`:""}<span class="pill ${st}">${lab}</span></div></div>
   <div class="grid"><main>${main}</main><aside>
   <div class="card"><div class="small">ルームコード <b>${S.code}</b> ${isM?"(マスター)":""} <button style="float:right;padding:2px 8px" data-act="leave">退出</button></div>
@@ -86,6 +86,7 @@ function qr(seed){let h=7;for(const c of String(seed))h=(h*31+c.charCodeAt(0))>>
   const f=(x,y)=>`<rect x="${x}" y="${y}" width="7" height="7"/><rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#f6f8f6"/><rect x="${x+2}" y="${y+2}" width="3" height="3"/>`;
   return `<svg viewBox="0 0 21 21" shape-rendering="crispEdges"><path d="${d}"/>${f(0,0)}${f(14,0)}${f(0,14)}</svg>`;}
 const sn=id=>{let h=0;for(const c of String(id))h=(h*131+c.charCodeAt(0))>>>0;const g=n=>{let x="";for(let i=0;i<n;i++){h=(h*1103515245+12345)>>>0;x+=(h>>>16)%10;}return x;};return [g(13),g(13),g(8),g(6)].join(" ");};
+const WM=(()=>{let h="";for(let r=-1;r<7;r++)for(let c=-1;c<4;c++)h+=`<i style="left:${c*30+(r%2?15:0)}cqw;top:${r*17-4}cqw"></i>`;return `<div class="jt-wm">${h}</div>`;})();
 const cwid=(c,mono)=>mono?.6:/[0-9]/.test(c)?.6:c===" "?.35:/[\x00-\x7f]/.test(c)?.68:1;
 function fit(txt,fs,cls=""){const mono=/mono/.test(cls),est=[...String(txt)].reduce((a,c)=>a+cwid(c,mono),0)*10;
   return `<svg class="fit ${cls}" viewBox="0 0 ${est.toFixed(1)} 11" style="width:min(100%,${(est/10*fs).toFixed(1)}cqw)"><text x="0" y="8.6" font-size="10" textLength="${est.toFixed(1)}" lengthAdjust="spacingAndGlyphs">${esc(txt)}</text></svg>`;}
@@ -99,9 +100,10 @@ function tk(t,hide,id){const T=TYPES[t.type],v=VT[t.type],rl=t.type==="r",cs=t.c
   else if(m.k==="normal")r=(ord?`<div class="jt-row jt-ob">${sel.map(i=>`<span class="jt-bx2">${i+1}</span>`).join("<i>▶</i>")}</div>`:`<b class="jt-c">${sel.map(N1).join("-")}</b>`)+amt;
   else if(m.k==="box")r=`<div class="jt-lb">ボックス</div>${grid(sel)}<div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;
   else r=`<div class="jt-lb">${ord?(m.pos+1)+"着":""}流し</div><div class="jt-row jt-nag"><b class="jt-c">${ax.map(N1).join("-")}</b><i>▶</i>${grid(pt)}</div><div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;
-  return `<div class="jtw"><div class="jt">
-  <div class="jt-l"><div class="jt-d">${fit(`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`,3.4)}</div><div class="jt-v">${fit(S.code,5.6)}</div><div class="jt-rc"><b>${S.room.round||1}</b>レ<span class="jt-su">ース</span></div>
-  <div class="jt-q">${qr((id||"preview")+"a")}${qr((id||"preview")+"b")}</div><div class="jt-tt">${esc(S.room.title||"")}</div><div class="jt-f">HIPPODROME</div></div>
+  return `<div class="jtw"><div class="jt">${WM}
+  <div class="jt-l"><div class="jt-d">${fit(`${d.getFullYear()}年`,3.4)}</div><div class="jt-v">${fit(S.code,5.6)}</div><div class="jt-rc"><b>${S.room.round||1}</b>レ<span class="jt-su">ース</span></div>
+  <div class="jt-q">${qr((id||"preview")+"a")}${qr((id||"preview")+"b")}</div><div class="jt-ed">${fit(`第${S.room.ed||S.room.round||1}回${S.room.grade?`（${S.room.grade}）`:""}`,3.3)}</div><div class="jt-tt">${esc(S.room.title||"")}</div>
+  <div class="jt-f">${fit("NQK 架空",3.4)}</div><div class="jt-f">${fit(`${d.getMonth()+1}月${d.getDate()}日`,3.4)}</div></div>
   <div class="jt-mid"><small>${v[0]}</small>${k>=2&&m.k==="normal"?"<em>普通</em>":""}<span>${v[1]}</span><small>${v[0]}</small></div>
   <div class="jt-rt"><div class="jt-r">${r}</div><div class="jt-tot">${fit(`合計 ${star(sheets,6)}${sheets}枚 ${star(tot.toLocaleString(),7)}${tot.toLocaleString()}円`,3.1,"r")}</div><div class="jt-no">${fit(sn(id||"preview"),2.2,"r mono")}</div></div>${w?`<span class="stamp">的中</span>`:""}</div>
   ${hide||pay==null?"":w?`<div class="jt-res">払戻金 ￥${pay.toLocaleString()}</div>`:`<div class="jt-res x">ハズレ</div>`}</div>`;}
@@ -115,9 +117,10 @@ function setup(){const r=S.room;
   if(!r.type)return `<div class="card"><h2>このラウンドのタイプを選択</h2><div class="two">
   <button class="big" data-act="settype" data-v="ranking"><b>順位型</b><span>競馬のように着順で的中が決まる。全券種のオッズを自動生成</span></button>
   <button class="big" data-act="settype" data-v="roulette"><b>当たり外れ型</b><span>ルーレットのように選択肢ごとに当たり外れが出る</span></button></div></div>`;
-  const rl=isRl(),d=S.ui.draft||(S.ui.draft={title:r.title||"",ent:ents().map(e=>({name:e.name,odds:e.odds,w:e.w??"",j:e.j??jit()})),rate:r.rate??1,mode:r.pmode?"prob":"odds"}),pm=d.mode==="prob",od=pm?draftOdds(d):[];
+  const rl=isRl(),d=S.ui.draft||(S.ui.draft={title:r.title||"",ent:ents().map(e=>({name:e.name,odds:e.odds,w:e.w??"",j:e.j??jit()})),rate:r.rate??1,mode:r.pmode?"prob":"odds",ed:r.ed??"",grade:r.grade||""}),pm=d.mode==="prob",od=pm?draftOdds(d):[];
   return `<div class="card"><h2>${rl?"選択肢と払戻倍率":"出走馬とオッズ"}</h2>
   <label>タイトル<input id="in-title" data-m="title" value="${esc(d.title)}"></label>
+  <label>第◯回（空欄ならラウンド番号）<input id="in-ed" data-m="ed" type="number" min="1" value="${d.ed}"></label><div class="tabs">格　${["","GI","GII","GIII","OP","L"].map(g=>`<button class="tab ${d.grade===g?"on":""}" data-act="grade" data-v="${g}">${g||"なし"}</button>`).join("")}</div>
   <div class="tabs"><button class="tab ${pm?"":"on"}" data-act="smode" data-v="odds">オッズで入力</button><button class="tab ${pm?"on":""}" data-act="smode" data-v="prob">勝率で入力（オッズを自動計算）</button></div>
   ${pm?`<p class="hint">${rl?"それぞれが当たる確率(%)を入力":"なんとなくの勝ちやすさを数字で入力（合計100でなくてOK。大きいほど有力）"}<br>オッズには±8%ほどの揺らぎが自動で入ります <button class="gray" data-act="reroll">揺らぎを再抽選</button></p>`:""}
   <table><tr><th></th><th>名前</th><th>${pm?"勝率":rl?"倍率":"単勝オッズ"}</th>${pm?"<th>オッズ</th>":""}<th></th></tr>
@@ -219,7 +222,7 @@ function atmScreen(A){const me=(S.room.players||{})[uid]||{},N={loan:"ご融資�
   return {h,hw,led,step:A.step};}
 function atmHTML(A,p){const cardCls=["card","feed"].includes(p.step)&&p.step==="card"?"in":p.step==="done"?"out":"",nb=Math.min(5,Math.max(1,Math.ceil(A.amt/10000))),bills=Array.from({length:nb},(_,i)=>`<div class="bill" style="--i:${i}"></div>`).join("");
   const cash=["insert","feed","cash"].includes(p.step)?p.hw:"";
-  return `<div class="ov"><div class="atmm"><div class="sign"><span>HIPPODROME BANK　ATM</span>${p.step==="done"?"":`<button class="ab" data-act="aclose">取消 Cancel</button>`}</div><div class="scr"><div class="scr-in">${p.h}</div></div>
+  return `<div class="ov"><div class="atmm"><div class="sign"><span>NQK BANK　ATM</span>${p.step==="done"?"":`<button class="ab" data-act="aclose">取消 Cancel</button>`}</div><div class="scr"><div class="scr-in">${p.h}</div></div>
   <div class="hw"><div class="slot"><span class="led ${p.led==="card"?"on":""}"></span><div class="cardwin"><div class="cardic ${cardCls}"></div></div><div class="slit"></div><small>カード挿入・返却口</small></div>
   <div class="slot"><span class="led ${p.led==="cash"?"on":""}"></span><div class="cashbox ${cash}">${bills}</div><div class="slit"></div><small>紙幣 取出・投入口</small></div></div></div></div>`;}
 function drawAtm(){const A=S.ui.atm,el=document.getElementById("atm-root");if(!el)return;if(!A){el.innerHTML="";S.atmSig="";return;}
@@ -265,7 +268,7 @@ async function start(){const d=S.ui.draft,rl=isRl(),pm=d.mode==="prob";
   if(!rl&&(d.ent.length<3||d.ent.length>18))return alert("出走数は3〜18です");
   const rate=Number(d.rate);if((!rl||pm)&&!(rate>=0.5&&rate<=1))return alert("払戻率は0.5〜1で入力してください");
   const od=draftOdds(d);if(od.some(o=>!(o>=1.1)))return alert(pm?"全ての勝率を入力してください":"全てのオッズに1.1以上を入力してください");
-  await update(R(),{title:d.title.trim(),entrants:d.ent.map((e,i)=>({name:String(e.name).trim(),odds:od[i],...(pm?{w:Number(e.w),j:e.j||1}:{})})),pmode:pm,rate:rate||1,status:"open",deadline:null});
+  await update(R(),{title:d.title.trim(),ed:Number(d.ed)>0?Number(d.ed):null,grade:d.grade||null,entrants:d.ent.map((e,i)=>({name:String(e.name).trim(),odds:od[i],...(pm?{w:Number(e.w),j:e.j||1}:{})})),pmode:pm,rate:rate||1,status:"open",deadline:null});
   S.ui.draft=null;S.ui.sel=[];S.ui.type=null;}
 async function settle(){const r=S.room,u=S.ui;if(r.status!=="closed")return;let result;
   if(isRl())result={wins:u.wins};else{if(u.res.some(v=>v==="")||new Set(u.res).size<3)return alert("1〜3着を重複なく選んでください");result={order:u.res.map(Number)};}
@@ -297,6 +300,7 @@ const acts={
   cell:v=>{const[t,x]=v.split("|");Object.assign(S.ui,{type:t,method:"normal",axis:[],part:[],sel:x.split("-").map(Number)});render();const e=document.getElementById("in-stake");if(e){e.scrollIntoView({block:"center"});e.focus();}},
   cfgok:async()=>{const n=Number(S.ui.cfg);if(!(n>=1000))return alert("初期金額を入力してください");const up={initBalance:n,status:"setup"};Object.keys(S.room.players||{}).forEach(id=>up[`players/${id}/balance`]=n);await update(R(),up);},
   clr:()=>{S.ui.draft.ent=[];update(R(),{entrants:null});render();},
+  grade:v=>{S.ui.draft.grade=v;render();},
   reroll:()=>{S.ui.draft.ent.forEach(e=>e.j=jit());render();},
   smode:v=>{S.ui.draft.mode=v;render();},
   dl:v=>update(R(),{deadline:+v>0?now()+(+v)*1000:null}),
@@ -331,7 +335,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
 document.addEventListener("input",e=>{const m=e.target.dataset.m;if(!m)return;const v=e.target.value,[k,i]=m.split(":"),u=S.ui;
   if(k==="name")S.name=v;else if(k==="hcode")S.hcode=v;else if(k==="stake"){u.stake=v;refreshBet();}
   else if(k==="bank")u.draft.bank=v;
-  else if(k==="title")u.draft.title=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="skip")u.skip=e.target.checked;else if(k==="ga")u.ga=v;
+  else if(k==="title")u.draft.title=v;else if(k==="ed")u.draft.ed=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="skip")u.skip=e.target.checked;else if(k==="ga")u.ga=v;
   else if(k==="rate"){u.draft.rate=v;refreshDraft();}else if(k==="init")u.draft.init=v;else if(k==="dl")u.draft.dl=v;
   else if(k==="res")u.res[i]=v;else if(k==="win")u.wins=e.target.checked?[...u.wins,+i]:u.wins.filter(x=>x!==+i);});
 document.addEventListener("focusout",()=>{if(S.pend)setTimeout(()=>{if(S.pend&&!/^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement||{}).tagName))render();},60);});
