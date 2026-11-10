@@ -7,7 +7,7 @@ const db=getDatabase(initializeApp(firebaseConfig)), $=s=>document.querySelector
 let off=0;const now=()=>Date.now()+off;onValue(ref(db,".info/serverTimeOffset"),x=>{off=x.val()||0;});
 const uid=localStorage.uid||(localStorage.uid=crypto.randomUUID());
 const S={code:localStorage.code||"",name:localStorage.name||"",room:null,hcode:"",lock:0,anim:false,seen:{},
-  ui:{sel:[],type:null,stake:"",draft:null,res:["","",""],wins:[],modal:false,cfg:"10000",method:"normal",axis:[],part:[],pos:0,tgt:"axis",atm:null,ot:"quinella",ax:0}};
+  ui:{sel:[],type:null,stake:"",draft:null,res:["","",""],wins:[],modal:false,cfg:"10000",gt:null,ga:"",method:"normal",axis:[],part:[],pos:0,tgt:"axis",atm:null,ot:"quinella",ax:0}};
 let unsub=null,oc={k:"",v:null},closing=false;
 const R=p=>ref(db,`rooms/${S.code}${p?"/"+p:""}`);
 const yen=n=>(n||0).toLocaleString()+"円", esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -16,7 +16,7 @@ const num=i=>isRl()?"":`<span class="num n${i%8}">${i+1}</span>`;
 const odds=()=>{const r=S.room,k=JSON.stringify([ents(),r.rate]);if(oc.k!==k)oc={k,v:calcOdds(ents(),r.rate)};return oc.v};
 const getOdds=(t,sel)=>isRl()?ents()[sel[0]].odds:odds()[t][key(t,sel)];
 
-function watch(){unsub&&unsub();unsub=onValue(R(),s=>{const v=s.val();S.room=v;let f=false;
+function watch(){unsub&&unsub();unsub=onValue(R(),s=>{const v=s.val();S.room=v;atmSync(v);let f=false;
   if(v&&v.status==="settled"&&v.settledAt&&!S.seen[v.settledAt]){S.seen[v.settledAt]=1;
     if(Math.abs(now()-v.settledAt)<15000){S.anim=true;S.lock=now()+6800;f=true;setTimeout(()=>{S.anim=false;S.lock=0;render(true)},6900);}}
   render(f,true);});}
@@ -24,7 +24,7 @@ async function join(code){
   const snap=await get(ref(db,`rooms/${code}`));if(!snap.exists())return alert("ルームが見つかりません");
   S.code=code;localStorage.code=code;localStorage.name=S.name;
   const pr=ref(db,`rooms/${code}/players/${uid}`);
-  if(!(await get(pr)).exists())await set(pr,{name:S.name,balance:snap.val().initBalance??0,bank:0,debt:0});
+  if(!(await get(pr)).exists())await set(pr,{name:S.name,balance:snap.val().initBalance??0,debt:0});
   watch();}
 async function create(){const code=Math.random().toString(36).slice(2,7).toUpperCase();
   await set(ref(db,`rooms/${code}`),{master:uid,status:"config"});await join(code);}
@@ -49,6 +49,8 @@ function updateOdo(el,v){const N=+el.dataset.n,s=String(Math.max(0,v)).padStart(
 function hookOdo(old){let el=document.getElementById("odo");if(!el)return;const t=+el.dataset.t;
   if(old&&+old.dataset.n>=String(t).length){el.replaceWith(old);el=old;}
   void el.offsetWidth;updateOdo(el,t);S.odoPrev=t;}
+function grantCard(){const u=S.ui;return `<div class="card"><h3>残高の付与（マスター）</h3><div>${Object.entries(S.room.players||{}).map(([id,p])=>`<button class="ent ${u.gt===id?"on":""}" data-act="gpick" data-v="${id}">${esc(p.name)}</button>`).join("")}<button class="ent ${u.gt==="all"?"on":""}" data-act="gpick" data-v="all">全員</button></div>
+  <div class="row"><input id="in-ga" data-m="ga" type="number" step="100" placeholder="付与する金額" value="${u.ga}"><button class="ok" data-act="grant">付与する</button></div><p class="small">借入にはなりません</p></div>`;}
 const home=()=>`<div class="hero"><h1>HIPPODROME</h1><p>身近なものを、賭けの対象に。架空通貨のみ使用。</p></div>
 <div class="card" style="max-width:420px;margin:auto"><label>名前<input id="in-name" data-m="name" value="${esc(S.name)}" maxlength="12"></label>
 <button class="primary" data-act="create">ルームを作る</button><hr style="border:0;border-top:1px solid #e6ece7;margin:16px 0">
@@ -61,7 +63,7 @@ function room(){
   const r=S.room,u=S.ui,me=(r.players||{})[uid],isM=r.master===uid,st=r.status,dl=st==="open"&&r.deadline;
   const lab={config:"部屋設定中",setup:"準備中",open:"発売中",closed:"発売締切",settled:"結果確定"}[st];
   const reqs=Object.entries(r.requests||{}),pend=reqs.filter(([,q])=>q.status==="pending"),mine=reqs.filter(([,q])=>q.uid===uid).sort((a,b)=>b[1].at-a[1].at).slice(0,3);
-  const ts=Object.entries(r.tickets||{}).filter(([,t])=>t.uid===uid).sort((a,b)=>b[1].at-a[1].at),net=p=>(p.balance||0)+(p.bank||0)-(p.debt||0);
+  const ts=Object.entries(r.tickets||{}).filter(([,t])=>t.uid===uid).sort((a,b)=>b[1].at-a[1].at),net=p=>(p.balance||0)-(p.debt||0);
   const bal=(me&&me.balance)||0,pv=S.odoPrev??bal,ON=Math.max(String(pv).length,String(bal).length);
   const main=st==="config"?(isM?config():`<div class="card c">マスターが部屋の設定中です</div>`):st==="setup"?(isM?setup():`<div class="card c">マスターがラウンドの準備中です</div>`)
     :(dl?`<div class="banner">まもなく発売終了　締切まで <span class="cd2" data-cd>${cdt()}</span></div>`:"")+board()+(st==="open"&&me?betForm():"")+oddsTable()+(isM&&(st==="open"||st==="closed")?control():"")+(st==="settled"?resultView():"");
@@ -70,12 +72,12 @@ function room(){
   <div class="grid"><main>${main}</main><aside>
   <div class="card"><div class="small">ルームコード <b>${S.code}</b> ${isM?"(マスター)":""} <button style="float:right;padding:2px 8px" data-act="leave">退出</button></div>
   <div class="small" style="margin-top:8px">手持ち残高</div><div class="amt"><span id="odo" class="odo" data-n="${ON}" data-v="${pv}" data-t="${bal}">${odoHTML(pv,ON)}</span><span class="odu">円</span></div>
-  <div class="small">口座残高 ${yen(me&&me.bank)}　借入残高 ${yen(me&&me.debt)}</div><button data-act="atmopen" style="margin-top:8px">ATMを利用する</button></div>
+  <div class="small">借入残高 ${yen(me&&me.debt)}</div><button data-act="atmopen" style="margin-top:8px">ATMを利用する</button></div>
   ${mine.length?`<div class="card"><h3>ご融資の申請</h3>${mine.map(([,q])=>`<div class="small">${yen(q.amount)}　${{pending:"承認待ち",approved:"承認",rejected:"却下"}[q.status]}</div>`).join("")}</div>`:""}
-  ${isM&&pend.length?`<div class="card"><h3>ご融資の申請（${pend.length}件）</h3>${pend.map(([id,q])=>`<div class="rq"><span>${esc(q.name)} / <b>${yen(q.amount)}</b></span><button class="ok" data-act="apv" data-v="${id}">承認</button><button class="red" data-act="rej" data-v="${id}">却下</button></div>`).join("")}</div>`:""}
+  ${isM?grantCard():""}${isM&&pend.length?`<div class="card"><h3>ご融資の申請（${pend.length}件）</h3>${pend.map(([id,q])=>`<div class="rq"><span>${esc(q.name)} / <b>${yen(q.amount)}</b></span><button class="ok" data-act="apv" data-v="${id}">承認</button><button class="red" data-act="rej" data-v="${id}">却下</button></div>`).join("")}</div>`:""}
   ${ts.length?`<div class="card"><h3>自分の馬券</h3>${ts.map(([id,t])=>tk(t,S.anim,id)).join("")}</div>`:""}
   <div class="card"><h3>参加者（資産順）</h3>${Object.values(r.players||{}).sort((a,b)=>net(b)-net(a)).map(p=>`<div class="small" style="font-size:13px">${esc(p.name)}　資産 ${yen(net(p))}${p.debt?`（借入 ${yen(p.debt)}）`:""}</div>`).join("")}</div>
-  </aside></div>${u.modal?modal():""}${u.atm?atm():""}`;
+  </aside></div>${u.modal?modal():""}`;
 }
 
 const VT={win:["WIN","単勝"],place:["PLACE","複勝"],quinella:["QUINELLA","馬連"],exacta:["EXACTA","馬単"],wide:["WIDE","ワイド"],trio:["TRIO","3連複"],trifecta:["TRIFECTA","3連単"],r:["BET","投票"]};
@@ -88,7 +90,7 @@ function tk(t,hide,id){const T=TYPES[t.type],v=VT[t.type],rl=t.type==="r",cs=t.c
   m=t.m||{k:n===1?"normal":"text",sel:cs[0].s||[]},sel=m.sel||[],ax=m.ax||[],pt=m.pt||[],d=new Date(t.at||now()),pay=t.payout,w=pay>0&&!hide,sheets=Math.round(tot/10),N1=i=>i+1,
   grid=a=>`<div class="jt-g">${ents().map((e,i)=>`<span class="${a.includes(i)?"s":""}">${i+1}</span>`).join("")}</div>`,
   amt=`<span class="jt-a">☆☆☆${per.toLocaleString()}円</span>`,star=(x,c)=>"★".repeat(Math.max(1,c-String(x).length));let r;
-  if(rl)r=`<b class="jt-hn">${esc(t.disp)}</b>${amt}`;
+  if(rl)r=`<b class="jt-hn rl">${esc(t.disp)}</b>${cs[0].o?`<div class="jt-i">倍率 ×${cs[0].o.toFixed(1)}</div>`:""}${amt}`;
   else if(m.k==="text")r=`<b class="jt-c" style="font-size:5cqw">${esc(t.disp)}</b><div class="jt-i">組合せ数 <b>${n}</b></div>${amt}`;
   else if(m.k==="normal"&&k===1)r=`<div class="jt-row"><span class="jt-bx">${sel[0]+1}</span><b class="jt-hn">${esc((ents()[sel[0]]||{}).name||"")}</b></div>${amt}`;
   else if(m.k==="normal")r=`<b class="jt-c">${sel.map(N1).join(ord?"→":"-")}</b>${amt}`;
@@ -96,24 +98,25 @@ function tk(t,hide,id){const T=TYPES[t.type],v=VT[t.type],rl=t.type==="r",cs=t.c
   else r=`<div class="jt-lb">${ord?(m.pos+1)+"着":""}流し</div><div class="jt-row jt-nag"><b class="jt-c">${ax.map(N1).join("-")}</b><i>▶</i>${grid(pt)}</div><div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;
   return `<div class="jtw"><div class="jt"><div class="jt-band"></div>
   <div class="jt-l"><div class="jt-d">${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日</div><div class="jt-v">${esc(S.code)}</div><div class="jt-rc"><b>${S.room.round||1}</b>レース</div>
-  <div class="jt-q">${qr((id||"preview")+"a")}${qr((id||"preview")+"b")}</div><div class="jt-tt">${esc(S.room.title||"")}</div><div class="jt-f">HIPPODROME　${d.getMonth()+1}月${d.getDate()}日</div></div>
+  <div class="jt-q">${qr((id||"preview")+"a")}${qr((id||"preview")+"b")}</div><div class="jt-tt">${esc(S.room.title||"")}</div><div class="jt-f">HIPPODROME</div></div>
   <div class="jt-mid"><small>${v[0]}</small>${k>=2&&m.k==="normal"?"<em>普通</em>":""}<span>${v[1]}</span><small>${v[0]}</small></div>
-  <div class="jt-r">${r}</div><div class="jt-tot">合計 ${star(sheets,6)}${sheets}枚 ${star(tot.toLocaleString(),7)}${tot.toLocaleString()}円</div><div class="jt-no">${sn(id||"preview")}</div>${w?`<span class="stamp">的中</span>`:""}</div>
+  <div class="jt-rt"><div class="jt-r">${r}</div><div class="jt-tot">合計 ${star(sheets,6)}${sheets}枚 ${star(tot.toLocaleString(),7)}${tot.toLocaleString()}円</div><div class="jt-no">${sn(id||"preview")}</div></div>${w?`<span class="stamp">的中</span>`:""}</div>
   ${hide||pay==null?"":w?`<div class="jt-res">払戻金 ￥${pay.toLocaleString()}</div>`:`<div class="jt-res x">ハズレ</div>`}</div>`;}
 
-function draftOdds(d){const rate=Number(d.rate)||0.8;if(d.mode!=="prob")return d.ent.map(e=>Number(e.odds));
-  const ws=d.ent.map(e=>Number(e.w)||0);
-  if(isRl())return ws.map(w=>w>0&&w<100?Math.max(1.1,Math.floor(rate/(w/100)*10)/10):NaN);
-  const t=ws.reduce((a,b)=>a+b,0);return ws.map(w=>w>0?Math.max(1.1,Math.floor(rate*t/w*10)/10):NaN);}
+const jit=()=>1+(Math.random()-.5)*.16,fmtO=o=>o<100?Math.floor(o*10)/10:Math.floor(o);
+function draftOdds(d){const rate=Number(d.rate)||1;if(d.mode!=="prob")return d.ent.map(e=>Number(e.odds));
+  const ws=d.ent.map(e=>Number(e.w)||0),js=d.ent.map(e=>e.j||1);
+  if(isRl())return ws.map((w,i)=>w>0&&w<100?Math.max(1.1,fmtO(rate/(w/100)*js[i])):NaN);
+  const t=ws.reduce((a,b)=>a+b,0);return ws.map((w,i)=>w>0?Math.max(1.1,fmtO(rate*t/w*js[i])):NaN);}
 function setup(){const r=S.room;
   if(!r.type)return `<div class="card"><h2>このラウンドのタイプを選択</h2><div class="two">
   <button class="big" data-act="settype" data-v="ranking"><b>順位型</b><span>競馬のように着順で的中が決まる。全券種のオッズを自動生成</span></button>
   <button class="big" data-act="settype" data-v="roulette"><b>当たり外れ型</b><span>ルーレットのように選択肢ごとに当たり外れが出る</span></button></div></div>`;
-  const rl=isRl(),d=S.ui.draft||(S.ui.draft={title:r.title||"",ent:ents().map(e=>({name:e.name,odds:e.odds,w:e.w??""})),rate:r.rate??0.8,mode:r.pmode?"prob":"odds"}),pm=d.mode==="prob",od=pm?draftOdds(d):[];
+  const rl=isRl(),d=S.ui.draft||(S.ui.draft={title:r.title||"",ent:ents().map(e=>({name:e.name,odds:e.odds,w:e.w??"",j:e.j??jit()})),rate:r.rate??1,mode:r.pmode?"prob":"odds"}),pm=d.mode==="prob",od=pm?draftOdds(d):[];
   return `<div class="card"><h2>${rl?"選択肢と払戻倍率":"出走馬とオッズ"}</h2>
   <label>タイトル<input id="in-title" data-m="title" value="${esc(d.title)}"></label>
   <div class="tabs"><button class="tab ${pm?"":"on"}" data-act="smode" data-v="odds">オッズで入力</button><button class="tab ${pm?"on":""}" data-act="smode" data-v="prob">勝率で入力（オッズを自動計算）</button></div>
-  ${pm?`<p class="hint">${rl?"それぞれが当たる確率(%)を入力":"なんとなくの勝ちやすさを数字で入力（合計100でなくてOK。大きいほど有力）"}</p>`:""}
+  ${pm?`<p class="hint">${rl?"それぞれが当たる確率(%)を入力":"なんとなくの勝ちやすさを数字で入力（合計100でなくてOK。大きいほど有力）"}<br>オッズには±8%ほどの揺らぎが自動で入ります <button class="gray" data-act="reroll">揺らぎを再抽選</button></p>`:""}
   <table><tr><th></th><th>名前</th><th>${pm?"勝率":rl?"倍率":"単勝オッズ"}</th>${pm?"<th>オッズ</th>":""}<th></th></tr>
   ${d.ent.map((e,i)=>`<tr><td>${rl?i+1:num(i)}</td><td><input id="en${i}" data-m="en:${i}" placeholder="名前" value="${esc(e.name)}"></td>
   ${pm?`<td><input id="ew${i}" data-m="ew:${i}" type="number" step="any" min="0" value="${e.w??""}" style="width:90px"></td><td><b id="od${i}">${od[i]>=1.1?od[i].toFixed(1):"-"}</b></td>`
@@ -191,32 +194,41 @@ function payTable(res,A){const rows=[],p=o=>yen(Math.floor(o*10)*10);
   return `<div class="${A?"rv":""}" style="animation-delay:5.4s"><h3 style="margin-top:14px">払戻金（100円あたり）</h3><table><tr><th>券種</th><th>組番</th><th>払戻金</th></tr>
   ${rows.map(([t,s,o])=>`<tr><td>${t}</td><td>${s}</td><td><b>${p(o)}</b></td></tr>`).join("")}</table></div>`;}
 
-function atm(){const A=S.ui.atm,me=(S.room.players||{})[uid]||{},kb=k=>`<button class="k" data-act="ak" data-v="${k}">${k}</button>`;
-  const pad=`<div class="pad">${[1,2,3,4,5,6,7,8,9,0].map(kb).join("")}<button class="k fix" data-act="ak" data-v="fix">訂正</button></div>`,cur=A.amt+Number(A.tmp||0);
-  const N={dep:"お預入れ",wd:"お引出し",loan:"ご融資",rep:"ご返済"}[A.mode];let h;
-  if(A.step==="menu")h=`<h3 class="at">ご希望の取引を押してください</h3><div class="am">
-    <button class="mb" data-act="amode" data-v="dep">お預入れ<small>Deposit</small></button><button class="mb" data-act="amode" data-v="wd">お引出し<small>Withdrawal</small></button>
-    <button class="mb" data-act="amode" data-v="loan">ご融資（借入）<small>Cash Advance</small></button><button class="mb" data-act="amode" data-v="rep">ご返済<small>Repayment</small></button>
-    <button class="sb" data-act="ainq" data-v="in1">出金可能額照会<small>Available Balance</small></button><button class="sb" data-act="ainq" data-v="in2">入金可能額照会<small>Deposit Limit</small></button></div>`;
-  else if(A.step==="inq")h=`<h3 class="at">${A.mode==="in1"?"出金可能額照会":"入金可能額照会"}</h3><div class="disp" style="text-align:left;font-size:16px">${A.mode==="in1"
-    ?`お引出し可能額（口座残高）<br><b>${yen(me.bank)}</b><br><span class="small">ご融資はマスターの承認制です</span>`
-    :`お預入れ可能額（手持ち）<br><b>${yen(me.balance)}</b><br>ご返済額（借入残高）<br><b>${yen(me.debt)}</b>`}</div><button data-act="amenu">メニューへ戻る</button>`;
-  else if(A.step==="pin")h=`<h3 class="at">暗証番号の${me.pin?"入力":"登録"}</h3><p class="small">${me.pin?"暗証番号を入力してください":"今回使う4桁を決めて入力してください（実在の暗証番号は使わないこと）"}</p><div class="disp">${"●".repeat(A.pin.length)||"&nbsp;"}</div>${pad}`;
-  else if(A.step==="amt")h=`<h3 class="at">金額の入力（${N}）</h3><p class="small">${{dep:"手持ち残高 "+yen(me.balance),wd:"口座残高 "+yen(me.bank),loan:"借入残高 "+yen(me.debt)+"（マスター承認制）",rep:"借入残高 "+yen(me.debt)+" / 手持ち "+yen(me.balance)}[A.mode]}　1,000円単位</p>
-    <div class="disp">金額：${cur.toLocaleString()}円</div><div class="pad2">${pad}<div class="side"><button class="k u" data-act="ak" data-v="万">万</button><button class="k u" data-act="ak" data-v="千">千</button><button class="k en" data-act="ak" data-v="円">円</button></div></div>`;
-  else h=`<h3 class="at">${esc(A.msg)}</h3>`;
-  return `<div class="ov"><div class="atm"><div class="atmh"><b>ATM</b><button class="ab" data-act="aclose">${A.step==="done"?"閉じる":"取引中止"}</button></div>${h}</div></div>`;}
-async function atmGo(){const A=S.ui.atm,amt=A.amt,me=S.room.players[uid],P=k=>ref(db,`rooms/${S.code}/players/${uid}/${k}`),fail=m=>{A.amt=0;A.tmp="";render(true);alert(m);};
-  if(!(amt>=1000&&amt%1000===0))return fail("金額は1,000円単位で入力してください");
-  if(A.mode==="dep"){if(!(await runTransaction(P("balance"),b=>(b>=amt?b-amt:undefined))).committed)return fail("手持ち残高が足りません");
-    await runTransaction(P("bank"),b=>(b||0)+amt);A.msg=`${yen(amt)} をお預入れしました`;}
-  else if(A.mode==="wd"){if(!(await runTransaction(P("bank"),b=>((b||0)>=amt?b-amt:undefined))).committed)return fail("口座残高が足りません");
-    await runTransaction(P("balance"),b=>(b||0)+amt);A.msg=`${yen(amt)} をお引出ししました`;}
-  else if(A.mode==="rep"){if((me.debt||0)<amt)return fail("借入残高を超えています");
-    if(!(await runTransaction(P("balance"),b=>(b>=amt?b-amt:undefined))).committed)return fail("手持ち残高が足りません");
-    await runTransaction(P("debt"),b=>Math.max(0,(b||0)-amt));A.msg=`${yen(amt)} をご返済いただきました`;}
-  else{await push(R("requests"),{uid,name:S.name,amount:amt,status:"pending",at:now()});A.msg=`${yen(amt)} のご融資を申し込みました。マスターの承認後に手持ち残高へ反映されます`;}
-  A.step="done";render(true);}
+let AC=null;
+const beep=(f,ms,at=0,ty="square",g=.05)=>{try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),v=AC.createGain(),t=AC.currentTime+at;o.type=ty;o.frequency.value=f;v.gain.value=g;o.connect(v);v.connect(AC.destination);o.start(t);o.stop(t+ms/1000);}catch{}};
+const sfx={key:()=>beep(1100,50),card:()=>beep(520,130),ok:()=>{beep(880,90);beep(1320,150,.1)},ng:()=>beep(300,250,0,"sawtooth"),cash:()=>{for(let i=0;i<16;i++)beep(170+Math.random()*70,40,i*.08,"sawtooth",.04)}};
+function atmScreen(A){const me=(S.room.players||{})[uid]||{},N={loan:"ご融資（借入）",rep:"ご返済"}[A.mode],txt=(A.amt+Number(A.tmp||0)).toLocaleString(),kb=k=>`<button class="k" data-act="ak" data-v="${k}">${k}</button>`;
+  const pad=`<div class="pad">${[1,2,3,4,5,6,7,8,9,0].map(kb).join("")}<button class="k fix" data-act="ak" data-v="fix">訂正</button></div>`,dots=`<div class="dots"><i></i><i></i><i></i></div>`;let h="",hw="",led="";
+  switch(A.step){
+    case"card":h=`<div class="scr-msg">カードを挿入してください<small>Please insert your card</small></div>`;hw="in";led="card";break;
+    case"menu":h=`<h3 class="at">ご希望の取引を押してください</h3><div class="am"><button class="mb" data-act="amode" data-v="loan">ご融資（借入）<small>Withdrawal (Cash Advance)</small></button><button class="mb" data-act="amode" data-v="rep">ご返済<small>Deposit (Repayment)</small></button>
+      <button class="sb" data-act="ainq" data-v="in1">出金可能額照会<small>Available Balance</small></button><button class="sb" data-act="ainq" data-v="in2">入金可能額照会<small>Deposit Limit</small></button></div>`;break;
+    case"inq":h=`<h3 class="at">${A.mode==="in1"?"出金可能額照会":"入金可能額照会"}</h3><div class="cf">${A.mode==="in1"?`ご融資のお取扱い上限　<b>なし</b><br>（マスターの承認制）<br>現在の借入残高　<b>${yen(me.debt)}</b>`
+      :`手持ち残高　<b>${yen(me.balance)}</b><br>借入残高　<b>${yen(me.debt)}</b><br>ご返済可能額　<b>${yen(Math.min(me.debt||0,me.balance||0))}</b>`}</div><button class="mb" data-act="amenu">メニューへ戻る</button>`;break;
+    case"amt":h=`<h3 class="at">金額の入力（${N}）</h3><p class="small">借入残高 ${yen(me.debt)}${A.mode==="rep"?" / 手持ち "+yen(me.balance):""}　1,000円単位</p><div class="disp">金額：${txt}円</div><div class="err">${esc(A.err||"")}</div><div class="pad2">${pad}<div class="side"><button class="k u" data-act="ak" data-v="万">万</button><button class="k u" data-act="ak" data-v="千">千</button><button class="k en" data-act="ak" data-v="円">円</button></div></div>`;break;
+    case"conf":h=`<h3 class="at">下記の内容でよろしいですか？</h3><div class="cf">お取引　<b>${N}</b><br>金額　<b>${A.amt.toLocaleString()}円</b><br>${A.mode==="rep"?`返済後の借入残高　${yen((me.debt||0)-A.amt)}`:`現在の借入残高　${yen(me.debt)}`}</div><div class="bt2"><button class="mb" data-act="aback">訂正</button><button class="mb ok" data-act="aok">確認</button></div>`;break;
+    case"proc":h=`<div class="scr-msg">お取引中です<small>しばらくお待ちください</small>${dots}</div>`;break;
+    case"insert":h=`<div class="scr-msg">紙幣を投入口にお入れください<small>ご返済額 ${yen(A.amt)}</small></div><button class="mb ok" data-act="ains" style="width:100%">紙幣を投入する</button>`;hw="open";led="cash";break;
+    case"feed":h=`<div class="scr-msg">紙幣を計数しています<small>Counting</small>${dots}</div>`;hw="in";break;
+    case"wait":h=`<div class="scr-msg">審査中です<small>ルームマスターの承認をお待ちください</small>${dots}</div>`;break;
+    case"cash":h=`<div class="scr-msg">紙幣をお取りください<small>${yen(A.amt)}　Please take your cash</small></div><button class="mb ok" data-act="atake" style="width:100%">紙幣を受け取る</button>`;hw=A.taken?"take":"out";led=A.taken?"":"cash";break;
+    case"done":h=`<div class="scr-msg">${esc(A.msg)}<small>ご利用ありがとうございました。カードをお取りください</small></div><button class="mb" data-act="aclose" style="width:100%">カードを受け取る</button>`;hw="out";led="card";break;}
+  return {h,hw,led,step:A.step};}
+function atmHTML(A,p){const cardCls=["card","feed"].includes(p.step)&&p.step==="card"?"in":p.step==="done"?"out":"",nb=Math.min(5,Math.max(1,Math.ceil(A.amt/10000))),bills=Array.from({length:nb},(_,i)=>`<div class="bill" style="--i:${i}"></div>`).join("");
+  const cash=["insert","feed","cash"].includes(p.step)?p.hw:"";
+  return `<div class="ov"><div class="atmm"><div class="sign"><span>HIPPODROME BANK　ATM</span>${p.step==="done"?"":`<button class="ab" data-act="aclose">取消 Cancel</button>`}</div><div class="scr"><div class="scr-in">${p.h}</div></div>
+  <div class="hw"><div class="slot"><span class="led ${p.led==="card"?"on":""}"></span><div class="cardwin"><div class="cardic ${cardCls}"></div></div><div class="slit"></div><small>カード挿入・返却口</small></div>
+  <div class="slot"><span class="led ${p.led==="cash"?"on":""}"></span><div class="cashbox ${cash}">${bills}</div><div class="slit"></div><small>紙幣 取出・投入口</small></div></div></div></div>`;}
+function drawAtm(){const A=S.ui.atm,el=document.getElementById("atm-root");if(!el)return;if(!A){el.innerHTML="";S.atmSig="";return;}
+  const p=atmScreen(A),sig=A.step+(A.taken?"t":""),sc=el.querySelector(".scr-in");
+  if(sc&&S.atmSig===sig){sc.innerHTML=p.h;return;}S.atmSig=sig;el.innerHTML=atmHTML(A,p);}
+function aT(step,ms,fn){const A=S.ui.atm;if(!A)return;A.step=step;A.err=A.err&&step==="amt"?A.err:"";drawAtm();if(fn)setTimeout(()=>{if(S.ui.atm===A&&A.step===step)fn();},ms);}
+function atmSync(v){const A=S.ui.atm;if(!A||A.step!=="wait"||!A.rid)return;const q=((v||{}).requests||{})[A.rid];if(!q)return;
+  if(q.status==="approved"){A.taken=false;sfx.cash();aT("cash");}else if(q.status==="rejected"){A.msg="ご融資をお取り扱いできませんでした";sfx.ng();aT("done");}}
+async function submitLoan(){const A=S.ui.atm,rf=await push(R("requests"),{uid,name:S.name,amount:A.amt,status:"pending",at:now()});A.rid=rf.key;if(S.ui.atm===A){aT("wait");atmSync(S.room);}}
+async function doRepay(){const A=S.ui.atm,a=A.amt,P=k=>ref(db,`rooms/${S.code}/players/${uid}/${k}`);
+  if(!(await runTransaction(P("balance"),b=>(b>=a?b-a:undefined))).committed){A.err="手持ち残高が足りません";A.amt=0;A.tmp="";sfx.ng();aT("amt");return;}
+  await runTransaction(P("debt"),b=>Math.max(0,(b||0)-a));A.msg=`${yen(a)} のご返済を承りました`;sfx.ok();if(S.ui.atm===A)aT("done");}
 
 function control(){const r=S.room,u=S.ui,rl=isRl();
   if(r.status==="open")return `<div class="card"><h2>マスター操作</h2><p class="hint">締切タイマー（いつでも設定・変更できます）</p>
@@ -250,7 +262,7 @@ async function start(){const d=S.ui.draft,rl=isRl(),pm=d.mode==="prob";
   if(!rl&&(d.ent.length<3||d.ent.length>18))return alert("出走数は3〜18です");
   const rate=Number(d.rate);if((!rl||pm)&&!(rate>=0.5&&rate<=1))return alert("払戻率は0.5〜1で入力してください");
   const od=draftOdds(d);if(od.some(o=>!(o>=1.1)))return alert(pm?"全ての勝率を入力してください":"全てのオッズに1.1以上を入力してください");
-  await update(R(),{title:d.title.trim(),entrants:d.ent.map((e,i)=>({name:String(e.name).trim(),odds:od[i],...(pm?{w:Number(e.w)}:{})})),pmode:pm,rate:rate||0.8,status:"open",deadline:null});
+  await update(R(),{title:d.title.trim(),entrants:d.ent.map((e,i)=>({name:String(e.name).trim(),odds:od[i],...(pm?{w:Number(e.w),j:e.j||1}:{})})),pmode:pm,rate:rate||1,status:"open",deadline:null});
   S.ui.draft=null;S.ui.sel=[];S.ui.type=null;}
 async function settle(){const r=S.room,u=S.ui;if(r.status!=="closed")return;let result;
   if(isRl())result={wins:u.wins};else{if(u.res.some(v=>v==="")||new Set(u.res).size<3)return alert("1〜3着を重複なく選んでください");result={order:u.res.map(Number)};}
@@ -264,7 +276,7 @@ const acts={
   join:()=>{if(!S.name.trim()||!S.hcode.trim())return alert("名前とコードを入力してください");join(S.hcode.trim().toUpperCase());},
   leave:()=>{unsub&&unsub();localStorage.removeItem("code");S.code="";S.room=null;render(true);},
   settype:v=>{S.ui.draft=null;update(R(),{type:v||null});},
-  addent:()=>{S.ui.draft.ent.push({name:"",odds:"",w:""});render();},
+  addent:()=>{S.ui.draft.ent.push({name:"",odds:"",w:"",j:jit()});render();},
   delent:v=>{S.ui.draft.ent.splice(v,1);render();},
   start,buy,settle,
   close:async()=>{if(closing)return;closing=true;await update(R(),{status:"closed"});closing=false;},
@@ -278,26 +290,36 @@ const acts={
       if(u[a].includes(i))u[a]=u[a].filter(x=>x!==i);else{u[o]=u[o].filter(x=>x!==i);u[a]=a==="axis"?[...u.axis,i].slice(-lim):[...u.part,i];}}
     render();},
   review:()=>{S.ui.modal=true;render();},cancel:()=>{S.ui.modal=false;render();},
-  atmopen:()=>{S.ui.atm={step:"menu",mode:"",pin:"",amt:0,tmp:"",msg:""};render(true);},
-  amode:v=>{S.ui.atm.mode=v;S.ui.atm.step="pin";render(true);},aclose:()=>{S.ui.atm=null;render(true);},
-  ak:async v=>{const A=S.ui.atm;if(!A)return;const me=S.room.players[uid];
-    if(A.step==="pin"){if(v==="fix")A.pin="";else if(/^\d$/.test(v)&&A.pin.length<4)A.pin+=v;
-      if(A.pin.length===4){if(!me.pin){await update(R(`players/${uid}`),{pin:A.pin});A.step="amt";}else if(me.pin===A.pin)A.step="amt";else{A.pin="";alert("暗証番号が違います");}}
-      render(true);return;}
-    if(A.step==="amt"){if(v==="fix"){A.amt=0;A.tmp="";}
-      else if(/^\d$/.test(v)){if((A.tmp||"").length<7)A.tmp=(A.tmp||"")+v;}
-      else if(v==="万"||v==="千"){A.amt+=Number(A.tmp||1)*(v==="万"?10000:1000);A.tmp="";}
-      else if(v==="円"){A.amt+=Number(A.tmp||0);A.tmp="";await atmGo();return;}
-      render(true);}},
   ot:v=>{S.ui.ot=v;S.ui.ax=0;render();},axis:v=>{S.ui.ax=+v;render();},
   cell:v=>{const[t,x]=v.split("|");Object.assign(S.ui,{type:t,method:"normal",axis:[],part:[],sel:x.split("-").map(Number)});render();const e=document.getElementById("in-stake");if(e){e.scrollIntoView({block:"center"});e.focus();}},
   cfgok:async()=>{const n=Number(S.ui.cfg);if(!(n>=1000))return alert("初期金額を入力してください");const up={initBalance:n,status:"setup"};Object.keys(S.room.players||{}).forEach(id=>up[`players/${id}/balance`]=n);await update(R(),up);},
   clr:()=>{S.ui.draft.ent=[];update(R(),{entrants:null});render();},
+  reroll:()=>{S.ui.draft.ent.forEach(e=>e.j=jit());render();},
   smode:v=>{S.ui.draft.mode=v;render();},
   dl:v=>update(R(),{deadline:+v>0?now()+(+v)*1000:null}),
   resp:v=>{const[j,i]=v.split("|").map(Number);S.ui.res[j]=S.ui.res[j]===i?"":i;render();},
   winp:v=>{const i=+v,w=S.ui.wins;S.ui.wins=w.includes(i)?w.filter(x=>x!==i):[...w,i];render();},
-  ainq:v=>{S.ui.atm.mode=v;S.ui.atm.step="inq";render(true);},amenu:()=>{S.ui.atm.step="menu";render(true);},
+  atmopen:()=>{const A=S.ui.atm={step:"card",mode:"",amt:0,tmp:"",err:"",rid:"",taken:false};sfx.card();drawAtm();setTimeout(()=>{if(S.ui.atm===A&&A.step==="card"){sfx.ok();aT("menu");}},1800);},
+  aclose:()=>{S.ui.atm=null;drawAtm();},
+  amode:v=>{const A=S.ui.atm;A.mode=v;A.amt=0;A.tmp="";sfx.key();aT("amt");},ainq:v=>{S.ui.atm.mode=v;sfx.key();aT("inq");},amenu:()=>{sfx.key();aT("menu");},
+  ak:v=>{const A=S.ui.atm;if(!A||A.step!=="amt")return;sfx.key();
+    if(v==="fix"){A.amt=0;A.tmp="";A.err="";}
+    else if(/^\d$/.test(v)){if((A.tmp||"").length<7)A.tmp=(A.tmp||"")+v;}
+    else if(v==="万"||v==="千"){A.amt+=Number(A.tmp||1)*(v==="万"?10000:1000);A.tmp="";}
+    else if(v==="円"){A.amt+=Number(A.tmp||0);A.tmp="";const me=S.room.players[uid],a=A.amt;
+      if(!(a>=1000&&a%1000===0))A.err="金額は1,000円単位で入力してください";
+      else if(A.mode==="rep"&&a>(me.debt||0))A.err="借入残高を超えています";
+      else if(A.mode==="rep"&&a>(me.balance||0))A.err="手持ち残高が足りません";
+      else{aT("conf");return;}
+      A.amt=0;sfx.ng();}
+    drawAtm();},
+  aback:()=>{const A=S.ui.atm;A.amt=0;A.tmp="";aT("amt");},
+  aok:()=>{const A=S.ui.atm;sfx.ok();if(A.mode==="loan")aT("proc",1600,submitLoan);else aT("insert");},
+  ains:()=>{sfx.cash();aT("feed",2600,doRepay);},
+  atake:()=>{const A=S.ui.atm;A.taken=true;drawAtm();setTimeout(()=>{if(S.ui.atm===A){A.msg=`${yen(A.amt)} のご融資が完了しました`;sfx.ok();aT("done");}},900);},
+  gpick:v=>{S.ui.gt=v;render();},
+  grant:async()=>{const u=S.ui,n=Number(u.ga);if(!u.gt)return alert("付与する相手を選んでください");if(!(n>0&&n%100===0))return alert("100円単位の金額を入力してください");
+    for(const id of(u.gt==="all"?Object.keys(S.room.players||{}):[u.gt]))await runTransaction(ref(db,`rooms/${S.code}/players/${id}/balance`),b=>(b||0)+n);u.ga="";render();},
   apv:async id=>{const q=S.room.requests[id];if(q.status!=="pending")return;await update(R(`requests/${id}`),{status:"approved"});const b=`rooms/${S.code}/players/${q.uid}`;
     await runTransaction(ref(db,b+"/balance"),x=>(x||0)+q.amount);await runTransaction(ref(db,b+"/debt"),x=>(x||0)+q.amount);},
   rej:id=>update(R(`requests/${id}`),{status:"rejected"})
@@ -306,11 +328,11 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
 document.addEventListener("input",e=>{const m=e.target.dataset.m;if(!m)return;const v=e.target.value,[k,i]=m.split(":"),u=S.ui;
   if(k==="name")S.name=v;else if(k==="hcode")S.hcode=v;else if(k==="stake"){u.stake=v;refreshBet();}
   else if(k==="bank")u.draft.bank=v;
-  else if(k==="title")u.draft.title=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;
+  else if(k==="title")u.draft.title=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="ga")u.ga=v;
   else if(k==="rate"){u.draft.rate=v;refreshDraft();}else if(k==="init")u.draft.init=v;else if(k==="dl")u.draft.dl=v;
   else if(k==="res")u.res[i]=v;else if(k==="win")u.wins=e.target.checked?[...u.wins,+i]:u.wins.filter(x=>x!==+i);});
 document.addEventListener("focusout",()=>{if(S.pend)setTimeout(()=>{if(S.pend&&!/^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement||{}).tagName))render();},60);});
-document.addEventListener("keydown",e=>{const A=S.ui.atm;if(!A||!["pin","amt"].includes(A.step)||/INPUT|SELECT/.test(e.target.tagName))return;
+document.addEventListener("keydown",e=>{const A=S.ui.atm;if(!A||A.step!=="amt"||/INPUT|SELECT/.test(e.target.tagName))return;
   if(/^\d$/.test(e.key))acts.ak(e.key);else if(e.key==="Backspace")acts.ak("fix");else if(e.key==="Enter"&&A.step==="amt")acts.ak("円");});
 setInterval(()=>{const r=S.room;if(!r||r.status!=="open"||!r.deadline)return;const l=r.deadline-now(),t=cdt();
   document.querySelectorAll("[data-cd]").forEach(e=>{e.textContent=t;e.classList.toggle("warn",l<=30000);});if(l<=0&&r.master===uid)acts.close();},1000);
