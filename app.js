@@ -18,7 +18,7 @@ const getOdds=(t,sel)=>isRl()?ents()[sel[0]].odds:odds()[t][key(t,sel)];
 
 function watch(){unsub&&unsub();unsub=onValue(R(),s=>{const v=s.val();S.room=v;atmSync(v);let f=false;
   if(v&&v.status==="settled"&&v.settledAt&&!S.seen[v.settledAt]){S.seen[v.settledAt]=1;
-    if(Math.abs(now()-v.settledAt)<15000){S.anim=true;S.lock=now()+6800;f=true;setTimeout(()=>{S.anim=false;S.lock=0;render(true)},6900);}}
+    if(!v.skip&&Math.abs(now()-v.settledAt)<15000){S.anim=true;S.lock=now()+6800;f=true;setTimeout(()=>{S.anim=false;S.lock=0;render(true)},6900);}}
   render(f,true);});}
 async function join(code){
   const snap=await get(ref(db,`rooms/${code}`));if(!snap.exists())return alert("ルームが見つかりません");
@@ -208,7 +208,7 @@ function atmScreen(A){const me=(S.room.players||{})[uid]||{},N={loan:"ご融資�
       <button class="sb" data-act="ainq" data-v="in1">出金可能額照会<small>Available Balance</small></button><button class="sb" data-act="ainq" data-v="in2">入金可能額照会<small>Deposit Limit</small></button></div>`;break;
     case"inq":h=`<h3 class="at">${A.mode==="in1"?"出金可能額照会":"入金可能額照会"}</h3><div class="cf">${A.mode==="in1"?`ご融資のお取扱い上限　<b>なし</b><br>（マスターの承認制）<br>現在の借入残高　<b>${yen(me.debt)}</b>`
       :`手持ち残高　<b>${yen(me.balance)}</b><br>借入残高　<b>${yen(me.debt)}</b><br>ご返済可能額　<b>${yen(Math.min(me.debt||0,me.balance||0))}</b>`}</div><button class="mb" data-act="amenu">メニューへ戻る</button>`;break;
-    case"amt":h=`<h3 class="at">金額の入力（${N}）</h3><p class="small">借入残高 ${yen(me.debt)}${A.mode==="rep"?" / 手持ち "+yen(me.balance):""}　1,000円単位</p><div class="disp">金額：${txt}円</div><div class="err">${esc(A.err||"")}</div><div class="pad2">${pad}<div class="side"><button class="k u" data-act="ak" data-v="万">万</button><button class="k u" data-act="ak" data-v="千">千</button><button class="k en" data-act="ak" data-v="円">円</button></div></div>`;break;
+    case"amt":h=`<div class="at2">金額の入力<small>${N}</small></div><div class="sm2">借入残高 ${yen(me.debt)}${A.mode==="rep"?"　手持ち "+yen(me.balance):""}　1,000円単位</div><div class="disp">金額：${txt}円</div><div class="err">${esc(A.err||"")}</div><div class="pad2">${pad}<div class="side"><button class="k u" data-act="ak" data-v="万">万</button><button class="k u" data-act="ak" data-v="千">千</button><button class="k en" data-act="ak" data-v="円">円</button></div></div>`;break;
     case"conf":h=`<h3 class="at">下記の内容でよろしいですか？</h3><div class="cf">お取引　<b>${N}</b><br>金額　<b>${A.amt.toLocaleString()}円</b><br>${A.mode==="rep"?`返済後の借入残高　${yen((me.debt||0)-A.amt)}`:`現在の借入残高　${yen(me.debt)}`}</div><div class="bt2"><button class="mb" data-act="aback">訂正</button><button class="mb ok" data-act="aok">確認</button></div>`;break;
     case"proc":h=`<div class="scr-msg">お取引中です<small>しばらくお待ちください</small>${dots}</div>`;break;
     case"insert":h=`<div class="scr-msg">紙幣を投入口にお入れください<small>ご返済額 ${yen(A.amt)}</small></div><button class="mb ok" data-act="ains" style="width:100%">紙幣を投入する</button>`;hw="open";led="cash";break;
@@ -239,7 +239,7 @@ function control(){const r=S.room,u=S.ui,rl=isRl();
     <div style="margin-top:10px"><button class="red" data-act="close">今すぐ発売を締め切る</button></div></div>`;
   const body=rl?`<p class="hint">当たりを選択（複数可、なしも可）</p>${ents().map((e,i)=>`<button class="ent ${u.wins.includes(i)?"on":""}" data-act="winp" data-v="${i}">${esc(e.name)}</button>`).join("")}`
     :[0,1,2].map(j=>`<div class="rr"><b>${j+1}着</b>${ents().map((e,i)=>`<button class="ent ${u.res[j]===i?"on":""}" ${u.res.some((v,k)=>k!==j&&v===i)?"disabled":""} data-act="resp" data-v="${j}|${i}">${num(i)}${esc(e.name)}</button>`).join("")}</div>`).join("");
-  return `<div class="card"><h2>結果入力</h2>${body}<button class="primary" data-act="settle" style="margin-top:10px">結果を確定して払戻</button></div>`;}
+  return `<div class="card"><h2>結果入力</h2>${body}<div class="chk"><input type="checkbox" id="in-skip" data-m="skip" ${u.skip?"checked":""}><label for="in-skip">演出スキップ（即座に順位と払戻を表示）</label></div><button class="primary" data-act="settle" style="margin-top:10px">結果を確定して払戻</button></div>`;}
 
 function resultView(){const r=S.room,res=r.result||{},A=S.anim,isM=r.master===uid;let body;
   if(isRl()){const w=res.wins||[];body=w.length?w.map((i,j)=>`<div class="rank ${A?"rv":""}" style="animation-delay:${2+j*.6}s">${esc(ents()[i].name)}</div>`).join(""):`<div class="rank ${A?"rv":""}" style="animation-delay:2s">全てハズレ</div>`;}
@@ -269,7 +269,7 @@ async function start(){const d=S.ui.draft,rl=isRl(),pm=d.mode==="prob";
   S.ui.draft=null;S.ui.sel=[];S.ui.type=null;}
 async function settle(){const r=S.room,u=S.ui;if(r.status!=="closed")return;let result;
   if(isRl())result={wins:u.wins};else{if(u.res.some(v=>v==="")||new Set(u.res).size<3)return alert("1〜3着を重複なく選んでください");result={order:u.res.map(Number)};}
-  const pay={},up={result,status:"settled",settledAt:now()};
+  const pay={},up={result,status:"settled",settledAt:now(),skip:!!u.skip};
   Object.entries(r.tickets||{}).forEach(([id,t])=>{const cs=t.cs||[{s:t.sel,o:t.odds}],per=t.per||t.stake,p=cs.reduce((a,c)=>a+(hit(r,{type:t.type,sel:c.s},result)?Math.floor(per*c.o/10)*10:0),0);up[`tickets/${id}/payout`]=p;if(p)pay[t.uid]=(pay[t.uid]||0)+p;});
   await update(R(),up);
   for(const[id,p]of Object.entries(pay))await runTransaction(ref(db,`rooms/${S.code}/players/${id}/balance`),b=>(b||0)+p);}
@@ -331,7 +331,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
 document.addEventListener("input",e=>{const m=e.target.dataset.m;if(!m)return;const v=e.target.value,[k,i]=m.split(":"),u=S.ui;
   if(k==="name")S.name=v;else if(k==="hcode")S.hcode=v;else if(k==="stake"){u.stake=v;refreshBet();}
   else if(k==="bank")u.draft.bank=v;
-  else if(k==="title")u.draft.title=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="ga")u.ga=v;
+  else if(k==="title")u.draft.title=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="skip")u.skip=e.target.checked;else if(k==="ga")u.ga=v;
   else if(k==="rate"){u.draft.rate=v;refreshDraft();}else if(k==="init")u.draft.init=v;else if(k==="dl")u.draft.dl=v;
   else if(k==="res")u.res[i]=v;else if(k==="win")u.wins=e.target.checked?[...u.wins,+i]:u.wins.filter(x=>x!==+i);});
 document.addEventListener("focusout",()=>{if(S.pend)setTimeout(()=>{if(S.pend&&!/^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement||{}).tagName))render();},60);});
