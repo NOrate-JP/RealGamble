@@ -94,3 +94,10 @@ background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
 .jt-wm{position:absolute;inset:0;z-index:-2;overflow:hidden;pointer-events:none}.jt-wm i{position:absolute;width:19cqw;height:19cqw;background:#c9ecdf;-webkit-mask:url(logo.svg) center/contain no-repeat;mask:url(logo.svg) center/contain no-repeat}
 .jt-l{gap:1cqw}.jt-q svg{width:10.5cqw;height:10.5cqw}.jt-tt{font-size:3.2cqw}
 .logo{width:76px;height:76px;display:block;margin:0 auto 4px}.logo-s{width:26px;height:26px;vertical-align:middle;margin-right:8px;filter:brightness(0) invert(1)}.hero .sub{color:#14532d;letter-spacing:.35em;font-size:14px;margin-bottom:6px}
+
+.jt-wm i{width:20.5cqw;height:24.6cqw}.jt-band{position:absolute;left:23%;width:8.5%;top:0;bottom:0;background:#bfe9d8;z-index:-1}.jt-su::before{display:none}
+.jt-rc{font-size:4.3cqw;justify-content:flex-end;margin-right:-1.9cqw}.jt-rc b{font-size:6cqw}
+.jt-h{font-size:5cqw;margin:0 .5cqw}
+.jt-fm{flex-wrap:nowrap;gap:1cqw}.jt-fm .jt-g{width:15cqw;font-size:2.5cqw}.jt-fm .jt-g span{line-height:3.2cqw}.jt-fm i{font-style:normal;font-size:3.5cqw}.jt-fm .jt-bx2{font-size:6cqw;min-width:7.5cqw}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:13px;margin:4px 0}.kb{padding:2px 8px;font-size:11px;margin:0}
+.vr{cursor:pointer}.vr:hover{background:#eef5ef}
