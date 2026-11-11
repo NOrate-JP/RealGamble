@@ -7,7 +7,7 @@ const db=getDatabase(initializeApp(firebaseConfig)), $=s=>document.querySelector
 let off=0;const now=()=>Date.now()+off;onValue(ref(db,".info/serverTimeOffset"),x=>{off=x.val()||0;});
 const uid=localStorage.uid||(localStorage.uid=crypto.randomUUID());
 const S={code:localStorage.code||"",name:localStorage.name||"",room:null,hcode:"",lock:0,anim:false,seen:{},
-  ui:{sel:[],type:null,stake:"",draft:null,res:["","",""],wins:[],modal:false,cfg:"10000",gt:null,ga:"",method:"normal",axis:[],part:[],pos:0,tgt:"axis",fm:[[],[],[]],ft:0,vw:null,atm:null,ot:"quinella",ax:0}};
+  ui:{sel:[],type:null,stake:"",draft:null,res:["","",""],wins:[],modal:false,cfg:"10000",gt:null,ga:"",method:"normal",axis:[],part:[],pos:0,tgt:"axis",fm:[[],[],[]],ft:0,vw:null,balm:false,bsel:[],balmsg:"",mul:"",setm:false,atm:null,ot:"quinella",ax:0}};
 let unsub=null,oc={k:"",v:null},closing=false;
 const R=p=>ref(db,`rooms/${S.code}${p?"/"+p:""}`);
 const yen=n=>(n||0).toLocaleString()+"円", esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -67,15 +67,27 @@ function updateOdo(el,v){const N=+el.dataset.n,s=String(Math.max(0,v)).padStart(
 function hookOdo(nb){let el=document.getElementById("odo");if(!el)return;const t=+(nb||el).dataset.t;
   if(nb&&+el.dataset.n<String(t).length){const c=nb.cloneNode(true);el.replaceWith(c);el=c;}
   void el.offsetWidth;updateOdo(el,t);S.odoPrev=t;}
-function grantCard(){const u=S.ui,ps=Object.entries(S.room.players||{});
-  return `<div class="card"><h3>残高の管理（マスター）</h3><table>${ps.map(([id,p])=>`<tr><td>${esc(p.name)}</td><td>残高 ${yen(p.balance)}</td><td>借入 ${yen(p.debt)}</td></tr>`).join("")}</table>
-  <div style="margin-top:8px">${ps.map(([id,p])=>`<button class="ent ${u.gt===id?"on":""}" data-act="gpick" data-v="${id}">${esc(p.name)}</button>`).join("")}<button class="ent ${u.gt==="all"?"on":""}" data-act="gpick" data-v="all">全員</button></div>
+function balModal(){const u=S.ui,P=S.room.players||{},ps=Object.entries(P),sel=u.bsel.filter(id=>P[id]),all=ps.length>0&&sel.length===ps.length;
+  return `<div class="ov"><div class="balm"><div class="sign"><span>残高の操作</span><button class="ab" data-act="balclose">閉じる</button></div>
+  <p class="small">全員の残高・借入がリアルタイムで表示されます。数字を直接書き換えて確定（Enterか枠外タップ）すると、その場で反映されます。</p>
+  <table class="bt"><tr><th></th><th>名前</th><th>残高</th><th>借入</th></tr>${ps.map(([id,p])=>`<tr><td><input type="checkbox" id="bs-${id}" data-m="bsel:${id}" ${sel.includes(id)?"checked":""}></td><td><label for="bs-${id}">${esc(p.name)}</label></td>
+  <td><input class="ed" type="number" data-ed="balance:${id}" value="${p.balance||0}"></td><td><input class="ed" type="number" data-ed="debt:${id}" value="${p.debt||0}"></td></tr>`).join("")}</table>
+  <div style="margin:6px 0"><button class="gray" data-act="bsall">${all?"全員のチェックを外す":"全員にチェック"}</button></div>
   <div class="row"><input id="in-ga" data-m="ga" type="number" step="100" placeholder="金額（100円単位）" value="${u.ga}"></div>
   <div><button class="ok" data-act="adj" data-v="b+">残高を追加</button><button class="red" data-act="adj" data-v="b-">残高を削除</button><button class="ok" data-act="adj" data-v="d+">借入を追加</button><button class="red" data-act="adj" data-v="d-">借入を削除</button></div>
-  <p class="small">「追加」は増やす、「削除」は減らす操作です。借入の増減では手持ち残高は変わりません。</p></div>`;}
+  <div class="row"><input id="in-mul" data-m="mul" type="text" inputmode="decimal" placeholder="倍率（例 1.5）" value="${esc(u.mul)}" style="width:130px"><button class="red" data-act="muldebt">チェックした人の借入を◯倍にする</button></div>
+  <p class="small">${esc(u.balmsg||"チェックを入れた人に、まとめて操作できます。借入の追加・削除では手持ち残高は変わりません。")}</p></div></div>`;}
+function setModal(){const r=S.room,on=(k,d)=>d?r[k]!==false:!!r[k],sw=(k,d)=>`<label class="sw"><input type="checkbox" data-m="set:${k}" ${on(k,d)?"checked":""}><span></span></label>`;
+  return `<div class="ov"><div class="balm"><div class="sign"><span>設定</span><button class="ab" data-act="setclose">閉じる</button></div>
+  <div class="srow"><span>購入時間に他の人の馬券を公開</span>${sw("pubOpen",false)}</div>
+  <div class="srow"><span>結果発表後に他の人の馬券を公開</span>${sw("pubEnd",true)}</div>
+  <div class="srow"><span>参加者全員の残高を公開</span>${sw("pubBal",true)}</div>
+  <div class="srow"><span>馬券の購入枚数を制限</span>${sw("limOn",false)}</div>
+  ${r.limOn?`<div class="srow"><span>1ラウンドに買える上限（枚）</span><input id="in-limn" data-m="limN" type="number" min="1" value="${r.limN??""}" style="width:90px"></div>${r.limN>=1?"":`<p class="small" style="color:#b3261e">上限の枚数を入力してください（未入力の間は制限されません）</p>`}`:""}
+  <p class="small">マスターは設定にかかわらず、常に全員の馬券と残高を見られます。「枚」は馬券の購入回数（1回の購入＝1枚）で数えます。</p></div></div>`;}
 const pubT=r=>`<div class="chk"><input type="checkbox" id="in-pub" data-m="pub" ${r.pubOpen?"checked":""}><label for="in-pub">購入中も他の人の馬券を見られるようにする</label></div>`;
 function allTickets(){const r=S.room,st=r.status,isM=r.master===uid;
-  if(!(st==="settled"||((st==="open"||st==="closed")&&(r.pubOpen||isM))))return "";
+  if(!(isM||(st==="settled"&&r.pubEnd!==false)||((st==="open"||st==="closed")&&r.pubOpen)))return "";
   const ts=Object.entries(r.tickets||{}),ps=r.players||{};if(!ts.length)return "";
   const by={};ts.forEach(([id,t])=>(by[t.uid]=by[t.uid]||[]).push([id,t]));
   const rows=Object.entries(by).map(([id,a])=>({id,name:(ps[id]||{}).name||a[0][1].name||"?",n:a.length,stk:a.reduce((x,[,t])=>x+t.stake,0),py:a.reduce((x,[,t])=>x+(t.payout||0),0),a})),sel=S.ui.vw&&by[S.ui.vw]?S.ui.vw:null,fin=st==="settled"&&!S.anim;
@@ -95,6 +107,7 @@ function room(){
   const lab={config:"部屋設定中",setup:"準備中",open:"発売中",closed:"発売締切",settled:"結果確定"}[st];
   const reqs=Object.entries(r.requests||{}),pend=reqs.filter(([,q])=>q.status==="pending"),mine=reqs.filter(([,q])=>q.uid===uid).sort((a,b)=>b[1].at-a[1].at).slice(0,3);
   const ts=Object.entries(r.tickets||{}).filter(([,t])=>t.uid===uid).sort((a,b)=>b[1].at-a[1].at),net=p=>(p.balance||0)-(p.debt||0);
+  const showBal=isM||r.pubBal!==false;
   const bal=(me&&me.balance)||0,pv=S.odoPrev??bal,ON=Math.max(String(pv).length,String(bal).length);
   const main=st==="config"?(isM?config():`<div class="card c">マスターが部屋の設定中です</div>`):st==="setup"?(isM?setup():`<div class="card c">マスターがラウンドの準備中です</div>`)
     :(dl?`<div class="banner">まもなく発売終了　締切まで <span class="cd2" data-cd>${cdt()}</span></div>`:"")+board()+(st==="open"&&me?betForm():"")+oddsTable()+(isM&&(st==="open"||st==="closed")?control():"")+(st==="settled"?resultView():"")+allTickets();
@@ -105,10 +118,10 @@ function room(){
   <div class="small" style="margin-top:8px">手持ち残高</div><div class="amt"><span id="odo" class="odo" data-n="${ON}" data-v="${pv}" data-t="${bal}">${odoHTML(pv,ON)}</span><span class="odu">円</span></div>
   <div class="small">借入残高 ${yen(me&&me.debt)}</div><button data-act="atmopen" style="margin-top:8px">ATMを利用する</button> <button data-act="copylink" style="margin-top:8px">招待リンクをコピー</button></div>
   ${mine.length?`<div class="card"><h3>ご融資の申請</h3>${mine.map(([,q])=>`<div class="small">${yen(q.amount)}　${{pending:"承認待ち",approved:"承認",rejected:"却下"}[q.status]}</div>`).join("")}</div>`:""}
-  ${isM?grantCard():""}${isM&&pend.length?`<div class="card"><h3>ご融資の申請（${pend.length}件）</h3>${pend.map(([id,q])=>`<div class="rq"><span>${esc(q.name)} / <b>${yen(q.amount)}</b></span><button class="ok" data-act="apv" data-v="${id}">承認</button><button class="red" data-act="rej" data-v="${id}">却下</button></div>`).join("")}</div>`:""}
+  ${isM?`<div class="card"><button data-act="balopen">残高を操作する</button> <button data-act="setopen">設定</button></div>`:""}${isM&&pend.length?`<div class="card"><h3>ご融資の申請（${pend.length}件）</h3>${pend.map(([id,q])=>`<div class="rq"><span>${esc(q.name)} / <b>${yen(q.amount)}</b></span><button class="ok" data-act="apv" data-v="${id}">承認</button><button class="red" data-act="rej" data-v="${id}">却下</button></div>`).join("")}</div>`:""}
   ${ts.length?`<div class="card"><h3>自分の馬券</h3>${ts.map(([id,t])=>tk(t,S.anim,id)).join("")}</div>`:""}
-  <div class="card"><h3>参加者（資産順）</h3>${Object.entries(r.players||{}).sort((a,b)=>net(b[1])-net(a[1])).map(([pid,p])=>`<div class="prow"><span>${esc(p.name)}　資産 ${yen(net(p))}${p.debt?`（借入 ${yen(p.debt)}）`:""}</span>${isM&&pid!==uid?`<button class="red kb" data-act="kick" data-v="${pid}">キック</button>`:""}</div>`).join("")}${isM&&Object.keys(r.kicked||{}).length?`<div class="small" style="margin-top:6px">キック済み：${Object.entries(r.kicked).map(([kid,kn])=>`${esc(kn)} <button class="kb" data-act="unkick" data-v="${kid}">解除</button>`).join("　")}</div>`:""}</div>
-  </aside></div>${u.modal?modal():""}`;
+  <div class="card"><h3>参加者${showBal?"（資産順）":""}</h3>${Object.entries(r.players||{}).sort((a,b)=>showBal?net(b[1])-net(a[1]):String(a[1].name).localeCompare(String(b[1].name))).map(([pid,p])=>`<div class="prow"><span>${esc(p.name)}${showBal||pid===uid?`　資産 ${yen(net(p))}${p.debt?`（借入 ${yen(p.debt)}）`:""}`:""}</span>${isM&&pid!==uid?`<button class="red kb" data-act="kick" data-v="${pid}">キック</button>`:""}</div>`).join("")}${isM&&Object.keys(r.kicked||{}).length?`<div class="small" style="margin-top:6px">キック済み：${Object.entries(r.kicked).map(([kid,kn])=>`${esc(kn)} <button class="kb" data-act="unkick" data-v="${kid}">解除</button>`).join("　")}</div>`:""}</div>
+  </aside></div>${u.modal?modal():""}${u.balm&&isM?balModal():""}${u.setm&&isM?setModal():""}`;
 }
 
 const VT={win:["WIN","単勝"],place:["PLACE","複勝"],quinella:["QUINELLA","馬連"],exacta:["EXACTA","馬単"],wide:["WIDE","ワイド"],trio:["TRIO","3連複"],trifecta:["TRIFECTA","3連単"],r:["BET","投票"]};
@@ -131,7 +144,7 @@ function tk(t,hide,id){const T=TYPES[t.type],v=VT[t.type],rl=t.type==="r",cs=t.c
   else if(m.k==="normal"&&k===1)r=`<div class="jt-row"><span class="jt-bx">${sel[0]+1}</span><b class="jt-hn">${esc((ents()[sel[0]]||{}).name||"")}</b></div>${amt}`;
   else if(m.k==="normal")r=`<div class="jt-row jt-ob">${sel.map(i=>`<span class="jt-bx2">${i+1}</span>`).join(ord?"<i>▶</i>":"<b class='jt-h'>-</b>")}</div>`+amt;
   else if(m.k==="box")r=`<div class="jt-lb">ボックス</div>${grid(sel)}<div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;
-  else if(m.k==="formation"){const cols=[0,1,2].map(j=>((m.fm||[])[j])||[]);r=`<div class="jt-lb">フォーメーション</div><div class="jt-row jt-nag jt-fm">${cols.map(a=>a.length===1?`<span class="jt-bx2">${a[0]+1}</span>`:grid(a)).join("<i>▶</i>")}</div><div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;}
+  else if(m.k==="formation"){const cols=Array.from({length:k},(_,j)=>((m.fm||[])[j])||[]);r=`<div class="jt-lb">フォーメーション</div><div class="jt-row jt-nag jt-fm">${cols.map(a=>a.length===1?`<span class="jt-bx2">${a[0]+1}</span>`:grid(a)).join("<i>▶</i>")}</div><div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;}
   else r=`<div class="jt-lb">${ord?(m.pos+1)+"着":""}流し</div><div class="jt-row jt-nag"><b class="jt-c">${ax.map(N1).join("-")}</b><i>▶</i>${grid(pt)}</div><div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;
   return `<div class="jtw"><div class="jt">${WM}
   <div class="jt-l"><div class="jt-d">${fit(`${d.getFullYear()}年`,3.4)}</div><div class="jt-v">${fit(S.code,5.6)}</div><div class="jt-rc"><b>${S.room.round||1}</b>レ<span class="jt-su">ース</span></div>
@@ -155,7 +168,7 @@ function setup(){const r=S.room;
   <label>タイトル<input id="in-title" data-m="title" value="${esc(d.title)}"></label>
   <label>レース名の上の行（第◯回 など自由入力。空欄なら「第N回」）<input id="in-ed" data-m="ed" type="text" placeholder="例：第57回（GII）" value="${esc(d.ed)}"></label>
   <div class="tabs"><button class="tab ${pm?"":"on"}" data-act="smode" data-v="odds">オッズで入力</button><button class="tab ${pm?"on":""}" data-act="smode" data-v="prob">勝率で入力（オッズを自動計算）</button></div>
-  ${pm?`<p class="hint">${rl?"それぞれが当たる確率(%)を入力":"なんとなくの勝ちやすさを数字で入力（合計100でなくてOK。大きいほど有力）"}<br>オッズには±8%ほどの揺らぎが自動で入ります <button class="gray" data-act="reroll">揺らぎを再抽選</button></p>`:""}
+  ${pm?`<p class="hint">${rl?"それぞれが当たる確率(%)を入力":"なんとなくの勝ちやすさを数字で入力（合計100でなくてOK。大きいほど有力）"}<br>オッズには±8%ほどの揺らぎが自動で入ります <button class="gray" data-act="reroll">揺らぎを再抽選</button> <button class="gray" data-act="unjit">揺らぎを解除</button></p>`:""}
   <table><tr><th></th><th>名前</th><th>${pm?"勝率":rl?"倍率":"単勝オッズ"}</th>${pm?"<th>オッズ</th>":""}<th></th></tr>
   ${d.ent.map((e,i)=>`<tr><td>${rl?i+1:num(i)}</td><td><input id="en${i}" data-m="en:${i}" placeholder="名前" value="${esc(e.name)}"></td>
   ${pm?`<td><input id="ew${i}" data-m="ew:${i}" type="number" step="any" min="0" value="${e.w??""}" style="width:90px"></td><td><b id="od${i}">${od[i]>=1.1?od[i].toFixed(1):"-"}</b></td>`
@@ -172,10 +185,10 @@ function board(){const r=S.room,rl=isRl(),O=rl?null:odds(),pool=Object.values(r.
 
 const perms=(a,m)=>m===0?[[]]:a.flatMap((x,i)=>perms([...a.slice(0,i),...a.slice(i+1)],m-1).map(p=>[x,...p]));
 const combs=(a,m)=>m===0?[[]]:a.flatMap((x,i)=>combs(a.slice(i+1),m-1).map(c=>[x,...c]));
-const effM=()=>{const u=S.ui,T=TYPES[u.type];if(isRl()||!T||T.k===1)return "normal";return u.method==="formation"&&T.k!==3?"normal":u.method;};
+const effM=()=>{const u=S.ui,T=TYPES[u.type];if(isRl()||!T||T.k===1)return "normal";return u.method==="formation"&&!["quinella","exacta","trio","trifecta"].includes(u.type)?"normal":u.method;};
 function genCombos(){const u=S.ui;if(isRl())return u.sel.length===1?[u.sel]:[];const t=u.type;if(!t)return [];const T=TYPES[t],k=T.k,m=effM();
   if(m==="normal")return u.sel.length===k?[u.sel]:[];
-  if(m==="formation"){const out=[],seen=new Set();for(const a of u.fm[0])for(const b of u.fm[1]){if(b===a)continue;for(const c of u.fm[2]){if(c===a||c===b)continue;const x=T.o?[a,b,c]:[a,b,c].sort((p,q)=>p-q),kk=x.join("-");if(!seen.has(kk)){seen.add(kk);out.push(x);}}}return out;}
+  if(m==="formation"){const F=u.fm.slice(0,k),out=[],seen=new Set(),rec=(i,cur)=>{if(i===k){const x=T.o?[...cur]:[...cur].sort((p,q)=>p-q),kk=x.join("-");if(!seen.has(kk)){seen.add(kk);out.push(x);}return;}for(const h of F[i])if(!cur.includes(h))rec(i+1,[...cur,h]);};rec(0,[]);return out;}
   if(m==="box")return u.sel.length>=k?(T.o?perms(u.sel,k):combs(u.sel,k)):[];
   const ax=u.axis,pt=u.part;
   if(T.o){if(ax.length!==1||pt.length<k-1)return [];return perms(pt,k-1).map(p=>{const o=[...p];o.splice(u.pos,0,ax[0]);return o;});}
@@ -184,7 +197,7 @@ function genCombos(){const u=S.ui;if(isRl())return u.sel.length===1?[u.sel]:[];c
 const methOf=()=>{if(isRl())return "";const T=TYPES[S.ui.type];return !T?"通常":{normal:"通常",box:"ボックス",nagashi:"流し",formation:"フォーメーション"}[effM()];};
 const mOf=()=>{const u=S.ui;return {k:effM(),sel:[...u.sel],ax:[...u.axis],pt:[...u.part],pos:u.pos,fm:u.fm.map(a=>[...a])};};
 function dispOf(){const u=S.ui,n=i=>i+1;if(isRl())return u.sel.length?ents()[u.sel[0]].name:"";const T=TYPES[u.type],m=effM();
-  if(m==="normal")return u.sel.map(n).join(T.o?"→":"-");if(m==="box")return u.sel.map(n).join("-");if(m==="formation")return u.fm.map(a=>a.map(n).join("・")).join("▶");
+  if(m==="normal")return u.sel.map(n).join(T.o?"→":"-");if(m==="box")return u.sel.map(n).join("-");if(m==="formation")return u.fm.slice(0,T.k).map(a=>a.map(n).join("・")).join("▶");
   return `${T.o?(u.pos+1)+"着軸 ":"軸 "}${u.axis.map(n).join("-")} / 相手 ${u.part.map(n).join("-")}`;}
 function betInfo(){const u=S.ui,t=isRl()?"r":u.type,cs=genCombos(),per=Number(u.stake)||0,n=cs.length;let lo=null,hi=null;
   if(t&&n&&n<=300){const os=cs.map(x=>getOdds(t,x));lo=Math.min(...os);hi=Math.max(...os);}
@@ -200,12 +213,13 @@ function betForm(){const u=S.ui,rl=isRl(),t=rl?"r":u.type,T=TYPES[t],k=T?T.k:1,m
     return `<button class="ent ${on?(P?"on2":"on"):""}" data-act="pick" data-v="${i}">${num(i)}${esc(e.name)}${m==="normal"&&T?.o&&u.sel.includes(i)?`<i>${u.sel.indexOf(i)+1}</i>`:""}${m==="formation"&&u.fm.some(a=>a.includes(i))?`<i>${u.fm.map((a,j)=>a.includes(i)?j+1:"").join("")}</i>`:""}</button>`;};
   const hint=!t?"券種を選択してください":rl?"賭ける対象を選択":m==="normal"?`${k}頭を選択${T.o?"（選択順が着順）":""}`:m==="formation"?"列（1着・2着・3着など）ごとに馬を選択。各列から1頭ずつ選んだ組み合わせを全通り購入します":m==="box"?`${k}頭以上を選択。組み合わせを全通り購入します`:`軸${T.o?"1頭":`1〜${k-1}頭`}と相手を選択（緑＝軸、青＝相手）`;
   return `<div class="card"><h2>投票</h2>${rl?"":`<div class="tabs">${Object.entries(TYPES).map(([id,v])=>`<button class="tab ${u.type===id?"on":""}" data-act="type" data-v="${id}">${v.n}</button>`).join("")}</div>`}
-  ${T&&k>=2?`<div class="tabs">${[["normal","通常"],["box","ボックス"],["nagashi","流し"],...(k===3?[["formation","フォーメーション"]]:[])].map(([id,l])=>`<button class="tab ${m===id?"on":""}" data-act="meth" data-v="${id}">${l}</button>`).join("")}</div>`:""}
+  ${T&&k>=2?`<div class="tabs">${[["normal","通常"],["box","ボックス"],["nagashi","流し"],...(["quinella","exacta","trio","trifecta"].includes(u.type)?[["formation","フォーメーション"]]:[])].map(([id,l])=>`<button class="tab ${m===id?"on":""}" data-act="meth" data-v="${id}">${l}</button>`).join("")}</div>`:""}
   <p class="hint">${hint}</p>
   ${t&&m==="nagashi"?`<div class="tabs"><button class="tab ${u.tgt==="axis"?"on":""}" data-act="tgt" data-v="axis">軸馬を選ぶ</button><button class="tab ${u.tgt==="part"?"on":""}" data-act="tgt" data-v="part">相手馬を選ぶ</button></div>
   ${T.o?`<div class="tabs">軸の着順 ${Array.from({length:k},(_,j)=>`<button class="tab ${u.pos===j?"on":""}" data-act="pos" data-v="${j}">${j+1}着</button>`).join("")}</div>`:""}`:""}
-  ${t&&m==="formation"?`<div class="tabs">${(T.o?["1着","2着","3着"]:["1頭目","2頭目","3頭目"]).map((l,j)=>`<button class="tab ${u.ft===j?"on":""}" data-act="fcol" data-v="${j}">${l}${u.fm[j].length?`（${u.fm[j].map(x=>x+1).join(",")}）`:""}</button>`).join("")}</div>`:""}
+  ${t&&m==="formation"?`<div class="tabs">${(T.o?["1着","2着","3着"]:["1頭目","2頭目","3頭目"]).slice(0,k).map((l,j)=>`<button class="tab ${u.ft===j?"on":""}" data-act="fcol" data-v="${j}">${l}${u.fm[j].length?`（${u.fm[j].map(x=>x+1).join(",")}）`:""}</button>`).join("")}</div>`:""}
   ${t?`<div>${ents().map(btn).join("")}</div>`:""}
+  ${S.room.limOn&&S.room.limN>=1?`<p class="small">購入は${S.room.limN}枚まで（残り ${Math.max(0,S.room.limN-Object.values(S.room.tickets||{}).filter(t=>t.uid===uid).length)}枚）</p>`:""}
   <div class="row"><span>1点あたり <input id="in-stake" data-m="stake" type="number" step="100" min="100" placeholder="100円単位" value="${u.stake}"></span></div>
   <div class="row" style="gap:10px 18px"><span>点数 <b id="b-n">${bs.n}</b></span><span>合計 <b id="b-tot">${bs.tot}</b></span><span>オッズ <b id="b-od">${bs.od}</b></span><span>的中時(1点) <b id="b-pay">${bs.pay}</b></span></div>
   <button class="primary" id="b-go" data-act="review" ${b.n&&b.per>=100?"":"disabled"}>購入内容を確認</button></div>`;}
@@ -276,10 +290,10 @@ async function doRepay(){const A=S.ui.atm,a=A.amt,P=k=>ref(db,`rooms/${S.code}/p
 function control(){const r=S.room,u=S.ui,rl=isRl();
   if(r.status==="open")return `<div class="card"><h2>マスター操作</h2><p class="hint">締切タイマー（いつでも設定・変更できます）</p>
     ${[[30,"あと30秒"],[60,"あと1分"],[180,"あと3分"],[300,"あと5分"]].map(([s,l])=>`<button data-act="dl" data-v="${s}">${l}で締切</button>`).join("")}${r.deadline?`<button data-act="dl" data-v="0">タイマー取消</button>`:""}
-    <div style="margin-top:10px"><button class="red" data-act="close">今すぐ発売を締め切る</button></div>${pubT(r)}</div>`;
+    <div style="margin-top:10px"><button class="red" data-act="close">今すぐ発売を締め切る</button></div></div>`;
   const body=rl?`<p class="hint">当たりを選択（複数可、なしも可）</p>${ents().map((e,i)=>`<button class="ent ${u.wins.includes(i)?"on":""}" data-act="winp" data-v="${i}">${esc(e.name)}</button>`).join("")}`
     :[0,1,2].map(j=>`<div class="rr"><b>${j+1}着</b>${ents().map((e,i)=>`<button class="ent ${u.res[j]===i?"on":""}" ${u.res.some((v,k)=>k!==j&&v===i)?"disabled":""} data-act="resp" data-v="${j}|${i}">${num(i)}${esc(e.name)}</button>`).join("")}</div>`).join("");
-  return `<div class="card"><h2>結果入力</h2>${body}${pubT(r)}<div class="chk"><input type="checkbox" id="in-skip" data-m="skip" ${u.skip?"checked":""}><label for="in-skip">演出スキップ（即座に順位と払戻を表示）</label></div><button class="primary" data-act="settle" style="margin-top:10px">結果を確定して払戻</button></div>`;}
+  return `<div class="card"><h2>結果入力</h2>${body}<div class="chk"><input type="checkbox" id="in-skip" data-m="skip" ${u.skip?"checked":""}><label for="in-skip">演出スキップ（即座に順位と払戻を表示）</label></div><button class="primary" data-act="settle" style="margin-top:10px">結果を確定して払戻</button></div>`;}
 
 function resultView(){const r=S.room,res=r.result||{},A=S.anim,isM=r.master===uid;let body;
   if(isRl()){const w=res.wins||[];body=w.length?w.map((i,j)=>`<div class="rank ${A?"rv":""}" style="animation-delay:${2+j*.6}s">${esc(ents()[i].name)}</div>`).join(""):`<div class="rank ${A?"rv":""}" style="animation-delay:2s">全てハズレ</div>`;}
@@ -293,6 +307,7 @@ function hit(r,t,res){if(r.type==="roulette")return(res.wins||[]).includes(t.sel
 
 async function buy(){const r=S.room,u=S.ui,b=betInfo(),t=b.t;u.modal=false;
   if(r.status!=="open"||(r.deadline&&now()>r.deadline)){render();return alert("発売は締め切られました");}
+  if(r.limOn&&r.limN>=1&&Object.values(r.tickets||{}).filter(x=>x.uid===uid).length>=r.limN){render();return alert(`1ラウンドの購入は${r.limN}枚までです`);}
   if(!b.n||!(b.per>=100&&b.per%100===0)){render();return alert("買い目と、100円単位の金額を入力してください");}
   if(b.n>300){render();return alert("点数が多すぎます（300点まで）");}
   const cs=b.cs.map(x=>({s:x,o:getOdds(t,x)}));
@@ -362,10 +377,18 @@ const acts={
   ains:()=>{sfx.cash();aT("feed",2600,doRepay);},
   atake:()=>{const A=S.ui.atm;A.taken=true;drawAtm();setTimeout(()=>{if(S.ui.atm===A){A.msg=`${yen(A.amt)} のご融資が完了しました`;sfx.ok();aT("done");}},900);},
   gpick:v=>{S.ui.gt=v;render();},
-  adj:async v=>{const u=S.ui,n=Number(u.ga);if(!u.gt)return alert("対象を選んでください");if(!(n>0&&n%100===0))return alert("100円単位の金額を入力してください");
+  adj:async v=>{const u=S.ui,n=Number(u.ga),ids=u.bsel.filter(id=>(S.room.players||{})[id]);if(!ids.length)return alert("操作する参加者にチェックを入れてください");if(!(n>0&&n%100===0))return alert("100円単位の金額を入力してください");
     const f=v[0]==="b"?"balance":"debt",sg=v[1]==="+"?1:-1;
-    for(const id of(u.gt==="all"?Object.keys(S.room.players||{}):[u.gt]))await runTransaction(ref(db,`rooms/${S.code}/players/${id}/${f}`),b=>Math.max(0,(b||0)+sg*n));
-    u.ga="";render();},
+    for(const id of ids)await runTransaction(ref(db,`rooms/${S.code}/players/${id}/${f}`),b=>Math.max(0,(b||0)+sg*n));
+    u.balmsg=`${ids.length}人の${f==="balance"?"残高":"借入"}を ${yen(n)} ${sg>0?"追加":"削除"}しました`;u.ga="";render();},
+  muldebt:async()=>{const u=S.ui,t=String(u.mul).trim(),n=Number(t),ids=u.bsel.filter(id=>(S.room.players||{})[id]);if(!ids.length)return alert("操作する参加者にチェックを入れてください");
+    if(t===""||!(n>=0)||!isFinite(n))return alert("倍率を数字で入力してください（例：1.5）");
+    for(const id of ids)await runTransaction(ref(db,`rooms/${S.code}/players/${id}/debt`),b=>Math.round((b||0)*n));
+    u.balmsg=`${ids.length}人の借入を ×${n} にしました`;u.mul="";render();},
+  balopen:()=>{S.ui.balm=true;S.ui.balmsg="";render();},balclose:()=>{S.ui.balm=false;render();},
+  bsall:()=>{const ids=Object.keys(S.room.players||{}),u=S.ui;u.bsel=u.bsel.filter(x=>ids.includes(x)).length===ids.length?[]:ids;render();},
+  setopen:()=>{S.ui.setm=true;render();},setclose:()=>{S.ui.setm=false;render();},
+  unjit:()=>{S.ui.draft.ent.forEach(e=>e.j=1);render();},
   vw:v=>{S.ui.vw=S.ui.vw===v?null:v;render();},
   copylink:async()=>{const u=location.origin+location.pathname+"?room="+S.code;try{await navigator.clipboard.writeText(u);alert("招待リンクをコピーしました\n"+u);}catch{prompt("招待リンク（コピーして共有してください）",u);}},
   kick:v=>{const p=(S.room.players||{})[v];if(!p||v===uid)return;if(!confirm(`「${p.name}」さんをキックしますか？（今回の馬券は無効になります）`))return;
@@ -381,9 +404,13 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
 document.addEventListener("input",e=>{const m=e.target.dataset.m;if(!m)return;const v=e.target.value,[k,i]=m.split(":"),u=S.ui;
   if(k==="name")S.name=v;else if(k==="hcode")S.hcode=v;else if(k==="stake"){u.stake=v;refreshBet();}
   else if(k==="bank")u.draft.bank=v;
-  else if(k==="title")u.draft.title=v;else if(k==="ed")u.draft.ed=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="skip")u.skip=e.target.checked;else if(k==="pub")update(R(),{pubOpen:e.target.checked});else if(k==="ga")u.ga=v;
+  else if(k==="title")u.draft.title=v;else if(k==="ed")u.draft.ed=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="skip")u.skip=e.target.checked;else if(k==="set")update(R(),{[i]:e.target.checked});else if(k==="limN"){const n=Math.floor(Number(v));if(n>=1)update(R(),{limN:n});}else if(k==="mul")u.mul=v;else if(k==="bsel"){u.bsel=e.target.checked?[...new Set([...u.bsel,i])]:u.bsel.filter(x=>x!==i);render();}else if(k==="ga")u.ga=v;
   else if(k==="rate"){u.draft.rate=v;refreshDraft();}else if(k==="init")u.draft.init=v;else if(k==="dl")u.draft.dl=v;
   else if(k==="res")u.res[i]=v;else if(k==="win")u.wins=e.target.checked?[...u.wins,+i]:u.wins.filter(x=>x!==+i);});
+document.addEventListener("change",e=>{const d=e.target.dataset&&e.target.dataset.ed;if(!d||!S.room||S.room.master!==uid)return;
+  const [f,id]=d.split(":"),raw=e.target.value,n=Math.round(Number(raw));
+  if(raw===""||!(n>=0)){render();return;}
+  update(R(`players/${id}`),{[f]:n});S.ui.balmsg=`${((S.room.players||{})[id]||{}).name||""} の${f==="balance"?"残高":"借入"}を ${yen(n)} に変更しました`;});
 document.addEventListener("keydown",e=>{const A=S.ui.atm;if(!A||A.step!=="amt"||/INPUT|SELECT/.test(e.target.tagName))return;
   if(/^\d$/.test(e.key))acts.ak(e.key);else if(e.key==="Backspace")acts.ak("fix");else if(e.key==="Enter"&&A.step==="amt")acts.ak("円");});
 setInterval(()=>{const r=S.room;if(!r||r.status!=="open"||!r.deadline)return;const l=r.deadline-now(),t=cdt();
