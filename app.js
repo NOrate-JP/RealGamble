@@ -210,7 +210,7 @@ function refreshDraft(){const d=S.ui.draft;if(!d||d.mode!=="prob")return;draftOd
 
 function betForm(){const u=S.ui,rl=isRl(),t=rl?"r":u.type,T=TYPES[t],k=T?T.k:1,m=effM(),b=betInfo(),bs=betStr(b);
   const btn=(e,i)=>{const A=u.axis.includes(i),P=u.part.includes(i),on=m==="nagashi"?A||P:m==="formation"?u.fm[u.ft].includes(i):u.sel.includes(i);
-    return `<button class="ent ${on?(P?"on2":"on"):""}" data-act="pick" data-v="${i}">${num(i)}${esc(e.name)}${m==="normal"&&T?.o&&u.sel.includes(i)?`<i>${u.sel.indexOf(i)+1}</i>`:""}${m==="formation"&&u.fm.some(a=>a.includes(i))?`<i>${u.fm.map((a,j)=>a.includes(i)?j+1:"").join("")}</i>`:""}</button>`;};
+    return `<button class="ent ${on?(P?"on2":"on"):""}" data-act="pick" data-v="${i}" title="${esc(e.name)}">${num(i)}<span class="nm">${esc(e.name)}</span>${m==="normal"&&T?.o&&u.sel.includes(i)?`<i>${u.sel.indexOf(i)+1}</i>`:""}${m==="formation"&&u.fm.some(a=>a.includes(i))?`<i>${u.fm.map((a,j)=>a.includes(i)?j+1:"").join("")}</i>`:""}</button>`;};
   const hint=!t?"券種を選択してください":rl?"賭ける対象を選択":m==="normal"?`${k}頭を選択${T.o?"（選択順が着順）":""}`:m==="formation"?"列（1着・2着・3着など）ごとに馬を選択。各列から1頭ずつ選んだ組み合わせを全通り購入します":m==="box"?`${k}頭以上を選択。組み合わせを全通り購入します`:`軸${T.o?"1頭":`1〜${k-1}頭`}と相手を選択（緑＝軸、青＝相手）`;
   return `<div class="card"><h2>投票</h2>${rl?"":`<div class="tabs">${Object.entries(TYPES).map(([id,v])=>`<button class="tab ${u.type===id?"on":""}" data-act="type" data-v="${id}">${v.n}</button>`).join("")}</div>`}
   ${T&&k>=2?`<div class="tabs">${[["normal","通常"],["box","ボックス"],["nagashi","流し"],...(["quinella","exacta","trio","trifecta"].includes(u.type)?[["formation","フォーメーション"]]:[])].map(([id,l])=>`<button class="tab ${m===id?"on":""}" data-act="meth" data-v="${id}">${l}</button>`).join("")}</div>`:""}
@@ -218,7 +218,7 @@ function betForm(){const u=S.ui,rl=isRl(),t=rl?"r":u.type,T=TYPES[t],k=T?T.k:1,m
   ${t&&m==="nagashi"?`<div class="tabs"><button class="tab ${u.tgt==="axis"?"on":""}" data-act="tgt" data-v="axis">軸馬を選ぶ</button><button class="tab ${u.tgt==="part"?"on":""}" data-act="tgt" data-v="part">相手馬を選ぶ</button></div>
   ${T.o?`<div class="tabs">軸の着順 ${Array.from({length:k},(_,j)=>`<button class="tab ${u.pos===j?"on":""}" data-act="pos" data-v="${j}">${j+1}着</button>`).join("")}</div>`:""}`:""}
   ${t&&m==="formation"?`<div class="tabs">${(T.o?["1着","2着","3着"]:["1頭目","2頭目","3頭目"]).slice(0,k).map((l,j)=>`<button class="tab ${u.ft===j?"on":""}" data-act="fcol" data-v="${j}">${l}${u.fm[j].length?`（${u.fm[j].map(x=>x+1).join(",")}）`:""}</button>`).join("")}</div>`:""}
-  ${t?`<div>${ents().map(btn).join("")}</div>`:""}
+  ${t?`<div class="hgrid">${ents().map(btn).join("")}</div>`:""}
   ${S.room.limOn&&S.room.limN>=1?`<p class="small">購入は${S.room.limN}枚まで（残り ${Math.max(0,S.room.limN-Object.values(S.room.tickets||{}).filter(t=>t.uid===uid).length)}枚）</p>`:""}
   <div class="row"><span>1点あたり <input id="in-stake" data-m="stake" type="number" step="100" min="100" placeholder="100円単位" value="${u.stake}"></span></div>
   <div class="row" style="gap:10px 18px"><span>点数 <b id="b-n">${bs.n}</b></span><span>合計 <b id="b-tot">${bs.tot}</b></span><span>オッズ <b id="b-od">${bs.od}</b></span><span>的中時(1点) <b id="b-pay">${bs.pay}</b></span></div>
@@ -291,8 +291,8 @@ function control(){const r=S.room,u=S.ui,rl=isRl();
   if(r.status==="open")return `<div class="card"><h2>マスター操作</h2><p class="hint">締切タイマー（いつでも設定・変更できます）</p>
     ${[[30,"あと30秒"],[60,"あと1分"],[180,"あと3分"],[300,"あと5分"]].map(([s,l])=>`<button data-act="dl" data-v="${s}">${l}で締切</button>`).join("")}${r.deadline?`<button data-act="dl" data-v="0">タイマー取消</button>`:""}
     <div style="margin-top:10px"><button class="red" data-act="close">今すぐ発売を締め切る</button></div></div>`;
-  const body=rl?`<p class="hint">当たりを選択（複数可、なしも可）</p>${ents().map((e,i)=>`<button class="ent ${u.wins.includes(i)?"on":""}" data-act="winp" data-v="${i}">${esc(e.name)}</button>`).join("")}`
-    :[0,1,2].map(j=>`<div class="rr"><b>${j+1}着</b>${ents().map((e,i)=>`<button class="ent ${u.res[j]===i?"on":""}" ${u.res.some((v,k)=>k!==j&&v===i)?"disabled":""} data-act="resp" data-v="${j}|${i}">${num(i)}${esc(e.name)}</button>`).join("")}</div>`).join("");
+  const body=rl?`<p class="hint">当たりを選択（複数可、なしも可）</p><div class="hgrid">${ents().map((e,i)=>`<button class="ent ${u.wins.includes(i)?"on":""}" data-act="winp" data-v="${i}" title="${esc(e.name)}"><span class="nm">${esc(e.name)}</span></button>`).join("")}</div>`
+    :[0,1,2].map(j=>`<div class="rr"><b>${j+1}着</b><div class="hgrid">${ents().map((e,i)=>`<button class="ent ${u.res[j]===i?"on":""}" ${u.res.some((v,k)=>k!==j&&v===i)?"disabled":""} data-act="resp" data-v="${j}|${i}" title="${esc(e.name)}">${num(i)}<span class="nm">${esc(e.name)}</span></button>`).join("")}</div></div>`).join("");
   return `<div class="card"><h2>結果入力</h2>${body}<div class="chk"><input type="checkbox" id="in-skip" data-m="skip" ${u.skip?"checked":""}><label for="in-skip">演出スキップ（即座に順位と払戻を表示）</label></div><button class="primary" data-act="settle" style="margin-top:10px">結果を確定して払戻</button></div>`;}
 
 function resultView(){const r=S.room,res=r.result||{},A=S.anim,isM=r.master===uid;let body;
@@ -413,7 +413,15 @@ document.addEventListener("change",e=>{const d=e.target.dataset&&e.target.datase
   update(R(`players/${id}`),{[f]:n});S.ui.balmsg=`${((S.room.players||{})[id]||{}).name||""} の${f==="balance"?"残高":"借入"}を ${yen(n)} に変更しました`;});
 document.addEventListener("keydown",e=>{const A=S.ui.atm;if(!A||A.step!=="amt"||/INPUT|SELECT/.test(e.target.tagName))return;
   if(/^\d$/.test(e.key))acts.ak(e.key);else if(e.key==="Backspace")acts.ak("fix");else if(e.key==="Enter"&&A.step==="amt")acts.ak("円");});
-setInterval(()=>{const r=S.room;if(!r||r.status!=="open"||!r.deadline)return;const l=r.deadline-now(),t=cdt();
+const NT=[[180,"あと3分","a"],[120,"あと2分","a"],[60,"あと1分","b"],[30,"あと30秒","c"],[10,"あと10秒","c"],[0,"","c"]];
+function showToast(big,cls,small="投票締切まで"){document.querySelectorAll(".toast").forEach(e=>e.remove());const d=document.createElement("div");d.className="toast "+cls;d.setAttribute("role","status");
+  d.innerHTML=`${small?`<small>${small}</small>`:""}<b>${big}</b>`;document.body.appendChild(d);d.addEventListener("animationend",()=>d.remove());setTimeout(()=>d.remove(),7000);}
+function notifyDl(dl,l){const sec=Math.ceil(l/1000);if(!S.ntf||S.ntf.dl!==dl)S.ntf={dl,done:new Set()};
+  const c=NT.filter(x=>sec<=x[0]).pop();if(!c||S.ntf.done.has(c[0]))return;
+  NT.forEach(x=>{if(x[0]>=c[0])S.ntf.done.add(x[0]);});
+  if(sec<c[0]-3)return;
+  if(c[0]===0)showToast("投票を締め切りました","c","");else showToast(c[1],c[2]);}
+setInterval(()=>{const r=S.room;if(!r||r.status!=="open"||!r.deadline)return;const l=r.deadline-now(),t=cdt();notifyDl(r.deadline,l);
   document.querySelectorAll("[data-cd]").forEach(e=>{e.textContent=t;e.classList.toggle("warn",l<=30000);});if(l<=0&&r.master===uid)acts.close();},1000);
 const uc=(new URLSearchParams(location.search).get("room")||location.hash.slice(1)||"").trim().toUpperCase();
 if(uc)S.hcode=uc;
