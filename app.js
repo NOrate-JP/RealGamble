@@ -147,11 +147,11 @@ function tk(t,hide,id){const T=TYPES[t.type],v=VT[t.type],rl=t.type==="r",cs=t.c
   else if(m.k==="formation"){const cols=Array.from({length:k},(_,j)=>((m.fm||[])[j])||[]);r=`<div class="jt-lb">フォーメーション</div><div class="jt-row jt-nag jt-fm">${cols.map(a=>a.length===1?`<span class="jt-bx2">${a[0]+1}</span>`:grid(a)).join("<i>▶</i>")}</div><div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;}
   else r=`<div class="jt-lb">${ord?(m.pos+1)+"着":""}流し</div><div class="jt-row jt-nag"><b class="jt-c">${ax.map(N1).join("-")}</b><i>▶</i>${grid(pt)}</div><div class="jt-i">組合せ数 <b>${n}</b>　各組 ${amt}</div>`;
   return `<div class="jtw"><div class="jt">${WM}
-  <div class="jt-l"><div class="jt-d">${fit(`${d.getFullYear()}年`,3.4)}</div><div class="jt-v">${fit(S.code,5.6)}</div><div class="jt-rc"><b>${S.room.round||1}</b>レ<span class="jt-su">ース</span></div>
-  <div class="jt-q">${qr((id||"preview")+"a")}${qr((id||"preview")+"b")}</div><div class="jt-ed">${fit(edLabel(),3.3)}</div><div class="jt-tt">${esc(S.room.title||"")}</div>
-  <div class="jt-f">${fit("NQK 架空",3.4)}</div><div class="jt-f">${fit(`${d.getMonth()+1}月${d.getDate()}日`,3.4)}</div></div>
+  <div class="jt-l"><div class="jt-d">${d.getFullYear()}年</div><div class="jt-v">${esc(S.code)}</div><div class="jt-rc"><b>${S.room.round||1}</b>レース</div>
+  <div class="jt-q">${qr((id||"preview")+"a")}${qr((id||"preview")+"b")}</div><div class="jt-ed">${esc(edLabel())}</div><div class="jt-tt">${esc(S.room.title||"")}</div>
+  <div class="jt-bt"><div class="jt-f">NQK 架空</div><div class="jt-f">${d.getMonth()+1}月${d.getDate()}日</div></div></div>
   <div class="jt-mid"><small>${v[0]}</small>${k>=2&&m.k==="normal"?"<em>普通</em>":""}<span>${v[1]}</span><small>${v[0]}</small></div>
-  <div class="jt-rt"><div class="jt-r">${r}</div><div class="jt-tot">${fit(`合計 ${star(sheets,6)}${sheets}枚 ${star(tot.toLocaleString(),7)}${tot.toLocaleString()}円`,3.1,"r")}</div><div class="jt-no">${fit(sn(id||"preview"),2.2,"r mono")}</div></div>${w?`<span class="stamp">的中</span>`:""}</div>
+  <div class="jt-rt"><div class="jt-r${!rl&&k===1?" ctr":""}">${r}</div><div class="jt-tot">${fit(`合計 ${star(sheets,6)}${sheets}枚 ${star(tot.toLocaleString(),7)}${tot.toLocaleString()}円`,3.4,"r")}</div><div class="jt-no">${fit(sn(id||"preview"),2.6,"r mono")}</div></div>${w?`<span class="stamp">的中</span>`:""}</div>
   ${hide||pay==null?"":w?`<div class="jt-res">払戻金 ￥${pay.toLocaleString()}</div>`:`<div class="jt-res x">ハズレ</div>`}</div>`;}
 
 const jit=()=>1+(Math.random()-.5)*.16,fmtO=o=>o<100?Math.floor(o*10)/10:Math.floor(o);
@@ -163,24 +163,25 @@ function setup(){const r=S.room;
   if(!r.type)return `<div class="card"><h2>このラウンドのタイプを選択</h2><div class="two">
   <button class="big" data-act="settype" data-v="ranking"><b>順位型</b><span>競馬のように着順で的中が決まる。全券種のオッズを自動生成</span></button>
   <button class="big" data-act="settype" data-v="roulette"><b>当たり外れ型</b><span>ルーレットのように選択肢ごとに当たり外れが出る</span></button></div></div>`;
-  const rl=isRl(),d=S.ui.draft||(S.ui.draft={title:r.title||"",ent:ents().map(e=>({name:e.name,odds:e.odds,w:e.w??"",j:e.j??jit()})),rate:r.rate??1,mode:r.pmode?"prob":"odds",ed:r.ed==null?"":String(r.ed)}),pm=d.mode==="prob",od=pm?draftOdds(d):[];
+  const rl=isRl(),d=S.ui.draft||(S.ui.draft={title:r.title||"",ent:ents().map(e=>({name:e.name,odds:e.odds,w:e.w??"",j:e.j??jit(),note:e.note||""})),rate:r.rate??1,mode:r.pmode?"prob":"odds",ed:r.ed==null?"":String(r.ed),noteOn:ents().some(e=>e.note)}),pm=d.mode==="prob",od=pm?draftOdds(d):[];
   return `<div class="card"><h2>${rl?"選択肢と払戻倍率":"出走馬とオッズ"}</h2>
   <label>タイトル<input id="in-title" data-m="title" value="${esc(d.title)}"></label>
   <label>レース名の上の行（第◯回 など自由入力。空欄なら「第N回」）<input id="in-ed" data-m="ed" type="text" placeholder="例：第57回（GII）" value="${esc(d.ed)}"></label>
   <div class="tabs"><button class="tab ${pm?"":"on"}" data-act="smode" data-v="odds">オッズで入力</button><button class="tab ${pm?"on":""}" data-act="smode" data-v="prob">勝率で入力（オッズを自動計算）</button></div>
   ${pm?`<p class="hint">${rl?"それぞれが当たる確率(%)を入力":"なんとなくの勝ちやすさを数字で入力（合計100でなくてOK。大きいほど有力）"}<br>オッズには±8%ほどの揺らぎが自動で入ります <button class="gray" data-act="reroll">揺らぎを再抽選</button> <button class="gray" data-act="unjit">揺らぎを解除</button></p>`:""}
+  <div class="chk"><input type="checkbox" id="in-noteon" data-m="noteon" ${d.noteOn?"checked":""}><label for="in-noteon">${rl?"各選択肢":"各馬"}の補足欄を使う（出馬表に小さく表示。馬券やボタンには出ません）</label></div>
   <table><tr><th></th><th>名前</th><th>${pm?"勝率":rl?"倍率":"単勝オッズ"}</th>${pm?"<th>オッズ</th>":""}<th></th></tr>
   ${d.ent.map((e,i)=>`<tr><td>${rl?i+1:num(i)}</td><td><input id="en${i}" data-m="en:${i}" placeholder="名前" value="${esc(e.name)}"></td>
   ${pm?`<td><input id="ew${i}" data-m="ew:${i}" type="number" step="any" min="0" value="${e.w??""}" style="width:90px"></td><td><b id="od${i}">${od[i]>=1.1?od[i].toFixed(1):"-"}</b></td>`
   :`<td><input id="eo${i}" data-m="eo:${i}" type="number" step="0.1" value="${e.odds??""}" style="width:100px"></td>`}
-  <td><button class="red" data-act="delent" data-v="${i}">削除</button></td></tr>`).join("")}</table>
+  <td><button class="red" data-act="delent" data-v="${i}">削除</button></td></tr>${d.noteOn?`<tr class="nrow"><td></td><td colspan="${pm?3:2}"><input id="et${i}" class="note" data-m="et:${i}" type="text" maxlength="200" placeholder="補足（任意）例：前走1着・逃げ馬" value="${esc(e.note||"")}"></td><td></td></tr>`:""}`).join("")}</table>
   <button data-act="addent">追加</button><button class="gray" data-act="clr">出走馬・オッズをクリア</button>
   <label>払戻率（0.5〜1）<input id="in-rate" data-m="rate" type="number" step="0.01" value="${d.rate}"></label>
   <button class="primary" data-act="start">発売開始</button> <button data-act="settype" data-v="">タイプを選び直す</button></div>`;}
 
 function board(){const r=S.room,rl=isRl(),O=rl?null:odds(),pool=Object.values(r.tickets||{}).reduce((a,t)=>a+t.stake,0);
   return `<div class="card"><h2>${rl?"オッズ（的中時の払戻倍率）":"出馬表"}</h2><table><tr><th>${rl?"No":"馬番"}</th><th>名前</th><th>${rl?"倍率":"単勝"}</th>${rl?"":"<th>複勝</th>"}</tr>
-  ${ents().map((e,i)=>`<tr><td>${rl?i+1:num(i)}</td><td>${esc(e.name)}</td><td><b>${e.odds.toFixed(1)}</b></td>${rl?"":`<td>${O.place[i].toFixed(1)}</td>`}</tr>`).join("")}</table>
+  ${ents().map((e,i)=>`<tr><td>${rl?i+1:num(i)}</td><td>${esc(e.name)}${e.note?`<div class="en-note">${esc(e.note)}</div>`:""}</td><td><b>${e.odds.toFixed(1)}</b></td>${rl?"":`<td>${O.place[i].toFixed(1)}</td>`}</tr>`).join("")}</table>
   <div class="small" style="margin-top:8px">発売額合計 <b>${yen(pool)}</b></div></div>`;}
 
 const perms=(a,m)=>m===0?[[]]:a.flatMap((x,i)=>perms([...a.slice(0,i),...a.slice(i+1)],m-1).map(p=>[x,...p]));
@@ -320,7 +321,7 @@ async function start(){const d=S.ui.draft,rl=isRl(),pm=d.mode==="prob";
   if(!rl&&(d.ent.length<3||d.ent.length>18))return alert("出走数は3〜18です");
   const rate=Number(d.rate);if((!rl||pm)&&!(rate>=0.5&&rate<=1))return alert("払戻率は0.5〜1で入力してください");
   const od=draftOdds(d);if(od.some(o=>!(o>=1.1)))return alert(pm?"全ての勝率を入力してください":"全てのオッズに1.1以上を入力してください");
-  await update(R(),{title:d.title.trim(),ed:String(d.ed||"").trim()||null,grade:null,entrants:d.ent.map((e,i)=>({name:String(e.name).trim(),odds:od[i],...(pm?{w:Number(e.w),j:e.j||1}:{})})),pmode:pm,rate:rate||1,status:"open",deadline:null});
+  await update(R(),{title:d.title.trim(),ed:String(d.ed||"").trim()||null,grade:null,entrants:d.ent.map((e,i)=>({name:String(e.name).trim(),odds:od[i],...(pm?{w:Number(e.w),j:e.j||1}:{}),...(d.noteOn&&String(e.note||"").trim()?{note:String(e.note).trim()}:{})})),pmode:pm,rate:rate||1,status:"open",deadline:null});
   S.ui.draft=null;S.ui.sel=[];S.ui.type=null;}
 async function settle(){const r=S.room,u=S.ui;if(r.status!=="closed")return;let result;
   if(isRl())result={wins:u.wins};else{if(u.res.some(v=>v==="")||new Set(u.res).size<3)return alert("1〜3着を重複なく選んでください");result={order:u.res.map(Number)};}
@@ -334,7 +335,7 @@ const acts={
   join:()=>{if(!S.name.trim()||!S.hcode.trim())return alert("名前とコードを入力してください");join(S.hcode.trim().toUpperCase());},
   leave:()=>{unsub&&unsub();localStorage.removeItem("code");S.code="";S.room=null;history.replaceState(null,"",location.pathname);render(true);},
   settype:v=>{S.ui.draft=null;update(R(),{type:v||null});},
-  addent:()=>{S.ui.draft.ent.push({name:"",odds:"",w:"",j:jit()});render();},
+  addent:()=>{S.ui.draft.ent.push({name:"",odds:"",w:"",j:jit(),note:""});render();},
   delent:v=>{S.ui.draft.ent.splice(v,1);render();},
   start,buy,settle,
   close:async()=>{if(closing)return;closing=true;await update(R(),{status:"closed"});closing=false;},
@@ -404,7 +405,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
 document.addEventListener("input",e=>{const m=e.target.dataset.m;if(!m)return;const v=e.target.value,[k,i]=m.split(":"),u=S.ui;
   if(k==="name")S.name=v;else if(k==="hcode")S.hcode=v;else if(k==="stake"){u.stake=v;refreshBet();}
   else if(k==="bank")u.draft.bank=v;
-  else if(k==="title")u.draft.title=v;else if(k==="ed")u.draft.ed=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="skip")u.skip=e.target.checked;else if(k==="set")update(R(),{[i]:e.target.checked});else if(k==="limN"){const n=Math.floor(Number(v));if(n>=1)update(R(),{limN:n});}else if(k==="mul")u.mul=v;else if(k==="bsel"){u.bsel=e.target.checked?[...new Set([...u.bsel,i])]:u.bsel.filter(x=>x!==i);render();}else if(k==="ga")u.ga=v;
+  else if(k==="title")u.draft.title=v;else if(k==="ed")u.draft.ed=v;else if(k==="et")u.draft.ent[i].note=v;else if(k==="noteon"){u.draft.noteOn=e.target.checked;render();}else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="skip")u.skip=e.target.checked;else if(k==="set")update(R(),{[i]:e.target.checked});else if(k==="limN"){const n=Math.floor(Number(v));if(n>=1)update(R(),{limN:n});}else if(k==="mul")u.mul=v;else if(k==="bsel"){u.bsel=e.target.checked?[...new Set([...u.bsel,i])]:u.bsel.filter(x=>x!==i);render();}else if(k==="ga")u.ga=v;
   else if(k==="rate"){u.draft.rate=v;refreshDraft();}else if(k==="init")u.draft.init=v;else if(k==="dl")u.draft.dl=v;
   else if(k==="res")u.res[i]=v;else if(k==="win")u.wins=e.target.checked?[...u.wins,+i]:u.wins.filter(x=>x!==+i);});
 document.addEventListener("change",e=>{const d=e.target.dataset&&e.target.dataset.ed;if(!d||!S.room||S.room.master!==uid)return;
