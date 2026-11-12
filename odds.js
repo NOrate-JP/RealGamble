@@ -6,7 +6,7 @@ export const TYPES = {
 export const key = (t, sel) => (TYPES[t].o ? sel : [...sel].sort((a,b)=>a-b)).join("-");
 
 // 単勝オッズ → 勝率 → Harvilleモデルで各券種の確率 → オッズ(払戻率rate)
-export function calcOdds(ent, rate) {
+export function calcOdds(ent, rate, pn = 3) {
   const n = ent.length, inv = ent.map(e => 1/e.odds), s = inv.reduce((a,b)=>a+b,0), p = inv.map(x=>x/s);
   const m = {place:{},quinella:{},exacta:{},wide:{},trio:{},trifecta:{}};
   const add = (t,k,v) => { m[t][k] = (m[t][k]||0) + v; };
@@ -15,7 +15,7 @@ export function calcOdds(ent, rate) {
     for (let c=0;c<n;c++) { if (c===a||c===b) continue;
       const pr = p[a] * p[b]/(1-p[a]) * p[c]/(1-p[a]-p[b]);
       add("trifecta",`${a}-${b}-${c}`,pr); add("trio",sk(a,b,c),pr);
-      add("place",a,pr); add("place",b,pr); add("place",c,pr);
+      add("place",a,pr); add("place",b,pr); if (pn >= 3) add("place",c,pr);
       add("wide",sk(a,b),pr); add("wide",sk(a,c),pr); add("wide",sk(b,c),pr);
       add("exacta",`${a}-${b}`,pr); add("quinella",sk(a,b),pr);
     }
