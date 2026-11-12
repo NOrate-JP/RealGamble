@@ -41,7 +41,7 @@ function morph(a,b){
   const inp=/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName),foc=a===document.activeElement;
   for(const t of[...a.attributes])if(!b.hasAttribute(t.name)&&!(inp&&t.name==="value"))a.removeAttribute(t.name);
   for(const t of[...b.attributes]){if(inp&&foc&&t.name==="value")continue;if(a.getAttribute(t.name)!==t.value)a.setAttribute(t.name,t.value);}
-  if(inp){if(!foc){if(a.type==="checkbox")a.checked=b.hasAttribute("checked");else a.value=b.getAttribute("value")??"";}return;}
+  if(inp){if(!foc){if(a.type==="checkbox")a.checked=b.hasAttribute("checked");else a.value=a.tagName==="TEXTAREA"?b.value:(b.getAttribute("value")??"");}return;}
   const ac=[...a.childNodes],bc=[...b.childNodes];
   bc.forEach((n,i)=>ac[i]?morph(ac[i],n):a.appendChild(n.cloneNode(true)));
   for(let i=ac.length-1;i>=bc.length;i--)ac[i].remove();
@@ -169,6 +169,16 @@ function tk(t,hide,id){const T=TYPES[t.type],v=(t.type==="r"&&t.meth==="大枠")
   <div class="jt-rt"><div class="jt-r${!rl&&k===1?" ctr":""}">${r}</div><div class="jt-tot">${fit(`合計 ${star(sheets,6)}${sheets}枚 ${star(tot.toLocaleString(),7)}${tot.toLocaleString()}円`,3.4,"r")}</div><div class="jt-no">${fit(sn(id||"preview"),2.6,"r mono")}</div></div>${w?`<span class="stamp">的中</span>`:""}</div>
   ${hide||pay==null?"":w?`<div class="jt-res">払戻金 ￥${pay.toLocaleString()}</div>`:`<div class="jt-res x">ハズレ</div>`}</div>`;}
 
+const SEP=/[、,，\t]/,z2h=t=>String(t).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[．。]/g,".").replace(/[－―ー]/g,"-");
+function parseBulk(txt){
+  const lines=String(txt||"").split(/\r?\n/).map(l=>l.trim()).filter(l=>l);if(!lines.length)return null;
+  const num=t=>{const x=z2h(String(t??"").trim().replace(/[%％倍]/g,""));return x!==""&&isFinite(Number(x))?Number(x):null;};
+  const isEnt=l=>{const p=l.split(SEP);return p.length>=2&&num(p[1])!=null;};
+  const R={title:null,ed:null,ent:[],bad:[]};let rest=lines;
+  if(!isEnt(lines[0])){const l=lines[0],k=l.search(SEP);if(k>=0){R.ed=l.slice(0,k).trim();R.title=l.slice(k+1).trim();}else R.title=l;rest=lines.slice(1);}
+  rest.forEach((l,i)=>{const p=l.split(SEP).map(x=>x.trim()),name=p[0];if(!name)return;const v=p.length>=2?num(p[1]):null;
+    if(v==null)R.bad.push((lines.length-rest.length)+i+1);R.ent.push({name,val:v==null?"":v,note:p.slice(2).join("、").trim()});});
+  return R;}
 const jit=()=>1+(Math.random()-.5)*.16,fmtO=o=>o<100?Math.floor(o*10)/10:Math.floor(o);
 function draftOdds(d){const rate=Number(d.rate)||1;if(d.mode!=="prob")return d.ent.map(e=>Number(e.odds));
   const ws=d.ent.map(e=>Number(e.w)||0),js=d.ent.map(e=>e.j||1);
@@ -182,6 +192,10 @@ function setup(){const r=S.room;
   return `<div class="card"><h2>${rl?"選択肢と払戻倍率":"出走馬とオッズ"}</h2>
   <label>タイトル<input id="in-title" data-m="title" value="${esc(d.title)}"></label>
   <label>レース名の上の行（第◯回 など自由入力。空欄なら「第N回」）<input id="in-ed" data-m="ed" type="text" placeholder="例：第57回（GII）" value="${esc(d.ed)}"></label>
+  <div class="bulkbox"><b>まとめて入力</b>
+  <textarea id="in-bulk" class="bulk" data-m="bulk" rows="6" placeholder="第一回（GII）、天皇賞&#10;あいうえお、2.1、補足の例&#10;かきくけこ、3.2、補足の例&#10;さしすせそ、5.9">\n${esc(d.bulk||"")}</textarea>
+  <div class="row"><button data-act="bulkapply">自動入力</button><span class="small">${esc(d.bulkMsg||"")}</span></div>
+  <p class="small">1行目：「サブタイトル、タイトル」（区切りが無ければタイトルのみ。サブタイトルはレース名の上の行に入ります）<br>2行目以降：「名前、${pm?"勝率":rl?"倍率":"オッズ"}、補足（省略可）」を1行に1つ。区切りは「、」「,」タブが使えます。押すと、下の出走馬の一覧がこの内容に置き換わります。</p></div>
   <div class="tabs"><button class="tab ${pm?"":"on"}" data-act="smode" data-v="odds">オッズで入力</button><button class="tab ${pm?"on":""}" data-act="smode" data-v="prob">勝率で入力（オッズを自動計算）</button></div>
   ${pm?`<p class="hint">${rl?"それぞれが当たる確率(%)を入力":"なんとなくの勝ちやすさを数字で入力（合計100でなくてOK。大きいほど有力）"}<br>オッズには±8%ほどの揺らぎが自動で入ります <button class="gray" data-act="reroll">揺らぎを再抽選</button> <button class="gray" data-act="unjit">揺らぎを解除</button></p>`:""}
   <div class="chk"><input type="checkbox" id="in-noteon" data-m="noteon" ${d.noteOn?"checked":""}><label for="in-noteon">${rl?"各選択肢":"各馬"}の補足欄を使う（出馬表に小さく表示。馬券やボタンには出ません）</label></div>
@@ -380,6 +394,11 @@ const acts={
     if(g.items.some(i=>!(od[i]>=1.1)))return alert("含まれる項目すべてに、有効なオッズ（1.1以上）を入れてから押してください");
     g.odds=Math.max(1.1,fmtO(1/g.items.reduce((a,i)=>a+1/od[i],0)));if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render();},
   gpickb:v=>{const u=S.ui,gi=+v;u.gsel=u.gsel===gi?null:gi;u.sel=[];render();},
+  bulkapply:()=>{const d=S.ui.draft,pm=d.mode==="prob",P=parseBulk(d.bulk);if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+    if(!P||(!P.ent.length&&P.title==null&&P.ed==null)){d.bulkMsg="読み取れる内容がありません";render();return;}
+    if(P.title!=null)d.title=P.title;if(P.ed!=null)d.ed=P.ed;
+    if(P.ent.length){d.ent=P.ent.map(e=>({name:e.name,odds:pm?"":e.val,w:pm?e.val:"",j:jit(),note:e.note||""}));if(P.ent.some(e=>e.note))d.noteOn=true;d.groups.forEach(g=>{g.items=g.items.filter(i=>i<d.ent.length);});}
+    d.bulkMsg=`${P.ent.length}件を入力しました`+(P.bad.length?`（${P.bad.join("・")}行目は数値を読み取れませんでした）`:"");render();},
   plc:v=>{S.ui.draft.placeN=+v;render();},
   smode:v=>{S.ui.draft.mode=v;render();},
   dl:v=>update(R(),{deadline:+v>0?now()+(+v)*1000:null}),
@@ -431,7 +450,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
 document.addEventListener("input",e=>{const m=e.target.dataset.m;if(!m)return;const v=e.target.value,[k,i]=m.split(":"),u=S.ui;
   if(k==="name")S.name=v;else if(k==="hcode")S.hcode=v;else if(k==="stake"){u.stake=v;refreshBet();}
   else if(k==="bank")u.draft.bank=v;
-  else if(k==="title")u.draft.title=v;else if(k==="ed")u.draft.ed=v;else if(k==="et")u.draft.ent[i].note=v;else if(k==="noteon"){u.draft.noteOn=e.target.checked;render();}else if(k==="gon"){u.draft.gOn=e.target.checked;render();}else if(k==="gn")u.draft.groups[i].name=v;else if(k==="gt")u.draft.groups[i].note=v;else if(k==="go")u.draft.groups[i].odds=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="skip")u.skip=e.target.checked;else if(k==="set")update(R(),{[i]:e.target.checked});else if(k==="limN"){const n=Math.floor(Number(v));if(n>=1)update(R(),{limN:n});}else if(k==="mul")u.mul=v;else if(k==="bsel"){u.bsel=e.target.checked?[...new Set([...u.bsel,i])]:u.bsel.filter(x=>x!==i);render();}else if(k==="ga")u.ga=v;
+  else if(k==="title")u.draft.title=v;else if(k==="ed")u.draft.ed=v;else if(k==="bulk")u.draft.bulk=v;else if(k==="et")u.draft.ent[i].note=v;else if(k==="noteon"){u.draft.noteOn=e.target.checked;render();}else if(k==="gon"){u.draft.gOn=e.target.checked;render();}else if(k==="gn")u.draft.groups[i].name=v;else if(k==="gt")u.draft.groups[i].note=v;else if(k==="go")u.draft.groups[i].odds=v;else if(k==="en")u.draft.ent[i].name=v;else if(k==="eo")u.draft.ent[i].odds=v;else if(k==="ew"){u.draft.ent[i].w=v;refreshDraft();}else if(k==="cfg")u.cfg=v;else if(k==="skip")u.skip=e.target.checked;else if(k==="set")update(R(),{[i]:e.target.checked});else if(k==="limN"){const n=Math.floor(Number(v));if(n>=1)update(R(),{limN:n});}else if(k==="mul")u.mul=v;else if(k==="bsel"){u.bsel=e.target.checked?[...new Set([...u.bsel,i])]:u.bsel.filter(x=>x!==i);render();}else if(k==="ga")u.ga=v;
   else if(k==="rate"){u.draft.rate=v;refreshDraft();}else if(k==="init")u.draft.init=v;else if(k==="dl")u.draft.dl=v;
   else if(k==="res")u.res[i]=v;else if(k==="win")u.wins=e.target.checked?[...u.wins,+i]:u.wins.filter(x=>x!==+i);});
 document.addEventListener("change",e=>{const d=e.target.dataset&&e.target.dataset.ed;if(!d||!S.room||S.room.master!==uid)return;
