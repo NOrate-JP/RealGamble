@@ -134,3 +134,21 @@ background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
 .jt-tot{margin-left:-9cqw}.jt-no{margin-left:-20cqw;margin-top:.6cqw}
 .en-note{font-size:12px;line-height:1.45;color:#5b6b60;margin-top:2px;font-weight:400;white-space:normal;overflow-wrap:anywhere}
 .nrow td{border-bottom:none;padding-top:0}.note{width:100%;font-size:13px}
+
+/* ticket: box nearer to left column / participants / mobile table fix */
+.jt{grid-template-columns:34% 11% 1fr}.jt-l{padding-right:1.5cqw}
+.grid{grid-template-columns:minmax(0,1fr) 330px}@media(max-width:800px){.grid{grid-template-columns:minmax(0,1fr)}}
+.grid>main,.grid>aside{min-width:0}html,body{max-width:100%;overflow-x:hidden}
+.ow{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #e3e9e4;border-radius:6px}
+.ot td,.ot th{min-width:38px;padding:3px 4px;font-size:11.5px}.ot .num{width:22px;height:22px;line-height:20px;font-size:12px;margin:0}
+.ot tr>th:first-child{position:sticky;left:0;background:#fff;z-index:1}
+.prow{gap:8px;margin:8px 0;font-size:16px}.pn{flex:1;min-width:0;font-weight:600;overflow-wrap:anywhere}.pb{text-align:right;font-size:14px;color:#14532d}
+.pb b{font-size:17px;font-family:ui-monospace,Menlo,Consolas,monospace}.pb small{display:block;font-size:12px;color:#b3261e}
+.vr td:first-child{font-size:15px;font-weight:600}.bt label{font-size:15px;font-weight:600}
+/* groups */
+.gbox{border:1px solid #dde4dd;border-radius:8px;padding:10px;margin:10px 0;background:#fafcfa}.gbox>input{width:100%;margin:2px 0}
+.gdot{display:inline-block;width:12px;height:12px;border-radius:50%}.gtag{font-size:11px;background:#e8eee9;border-radius:8px;padding:1px 7px;margin-left:6px;color:#14532d}.grow td{background:#f6faf6}
+.gt{width:auto;border-collapse:collapse}.gt th,.gt td{border:1px solid #e3e9e4;padding:5px 6px;text-align:center;font-size:12px;min-width:58px}
+.gt th.gi{text-align:left;min-width:96px;position:sticky;left:0;background:#fff;z-index:1;font-size:13px}.gt th.gh{background:#fafcfa;vertical-align:bottom}
+.gt th.gh span{display:block;font-size:13px;overflow-wrap:anywhere}.gt th.gh small{display:block;font-weight:400;color:#5b6b60}.gt td.gy{font-size:18px;line-height:1}
+.gt th.hitrow,.gt th.gh.hitg{background:#fff3b0}.gl{margin:8px 0;font-size:14px}.gl .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
