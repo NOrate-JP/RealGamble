@@ -170,3 +170,7 @@ html,body,button,input,select,textarea{font-family:"Noto Sans JP",sans-serif}
 .bulkbox{border:1px dashed #9bb7a3;border-radius:8px;padding:10px;margin:10px 0;background:#fafcfa}
 .bulk{display:block;width:100%;min-height:150px;margin:6px 0;padding:8px;font-size:14px;line-height:1.55;border:1px solid #b8c4ba;border-radius:6px;background:#fff;color:#1d2a22;resize:vertical}
 .amt,.cd,.oc,.ed,.odo,.disp,.fit.mono text,.jt-no{font-variant-numeric:tabular-nums}
+
+.two{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.bt2 .small{white-space:nowrap}
+.pp{border-top:1px solid #e6ece7;padding:8px 0}.pp:first-of-type{border-top:none}
