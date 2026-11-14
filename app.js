@@ -13,7 +13,8 @@ const R=p=>ref(db,`rooms/${S.code}${p?"/"+p:""}`);
 const yen=n=>(n||0).toLocaleString()+"円", esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ents=()=>S.room.entrants||[], isRl=()=>S.room.type==="roulette"||S.room.type==="proposal";
 const RLT=t=>t==="roulette"||t==="proposal",typeLabel=t=>({ranking:"順位型",roulette:"当落型",proposal:"当落提案型"}[t]||"");
-const num=i=>isRl()?"":`<span class="num n${i%8}">${i+1}</span>`;
+const frameOf=(i,n)=>{if(n<=8)return i;const c=Array(8).fill(1);let r=n-8;while(r>0){for(let f=7;f>=0&&r>0;f--){c[f]++;r--;}}let a=0;for(let f=0;f<8;f++){a+=c[f];if(i<a)return f;}return 7;};
+const num=(i,n)=>isRl()?"":`<span class="num n${frameOf(i,n??ents().length)}">${i+1}</span>`;
 const odds=()=>{const r=S.room,k=JSON.stringify([ents(),r.rate,r.placeN]);if(oc.k!==k)oc={k,v:calcOdds(ents(),r.rate,r.placeN===2?2:3)};return oc.v};
 const getOdds=(t,sel)=>isRl()?(sel[0]<0?S.room.groups[-sel[0]-1].odds:ents()[sel[0]].odds):odds()[t][key(t,sel)];
 
@@ -76,7 +77,7 @@ function balModal(){const u=S.ui,P=S.room.players||{},ps=Object.entries(P),sel=u
   <div style="margin:6px 0"><button class="gray" data-act="bsall">${all?"全員のチェックを外す":"全員にチェック"}</button></div>
   <div class="row"><input id="in-ga" data-m="ga" type="number" step="100" placeholder="金額（100円単位）" value="${u.ga}"></div>
   <div><button class="ok" data-act="adj" data-v="b+">残高を追加</button><button class="red" data-act="adj" data-v="b-">残高を削除</button><button class="ok" data-act="adj" data-v="d+">借入を追加</button><button class="red" data-act="adj" data-v="d-">借入を削除</button></div>
-  <div class="row"><input id="in-mul" data-m="mul" type="text" inputmode="decimal" placeholder="倍率（例 1.5）" value="${esc(u.mul)}" style="width:130px"><button class="red" data-act="muldebt">チェックした人の借入を◯倍にする</button></div>
+  <div class="row"><input id="in-mul" data-m="mul" type="text" inputmode="decimal" placeholder="倍率" value="${esc(u.mul)}" style="width:130px"><button class="red" data-act="muldebt">チェックした人の借入を◯倍にする</button></div>
   <p class="small">${esc(u.balmsg||"チェックを入れた人に、まとめて操作できます。借入の追加・削除では手持ち残高は変わりません。")}</p></div></div>`;}
 function setModal(){const r=S.room,on=(k,d)=>d?r[k]!==false:!!r[k],sw=(k,d)=>`<label class="sw"><input type="checkbox" data-m="set:${k}" ${on(k,d)?"checked":""}><span></span></label>`;
   return `<div class="ov"><div class="balm"><div class="sign"><span>設定</span><button class="ab" data-act="setclose">閉じる</button></div>
@@ -89,7 +90,7 @@ function setModal(){const r=S.room,on=(k,d)=>d?r[k]!==false:!!r[k],sw=(k,d)=>`<l
 const GC=["#2a6fd6","#d62828","#2e9e4f","#f28a1c","#8e44ad","#0a8f8f","#c2185b","#8d6e00"];
 const grpRows=r=>(r.groups||[]).map((g,gi)=>`<tr class="grow"><td><span class="gdot" style="background:${GC[gi%GC.length]}"></span></td><td>${esc(g.name)}<span class="gtag">大枠</span>${g.note?`<div class="en-note">${esc(g.note)}</div>`:""}</td><td><b>${g.odds.toFixed(1)}</b></td></tr>`).join("");
 function groupSetup(d){
-  const body=d.gOn?`${d.groups.map((g,gi)=>`<div class="gbox" style="border-left:5px solid ${GC[gi%GC.length]}"><input id="gn${gi}" data-m="gn:${gi}" type="text" placeholder="大枠の名前（例：偶数）" value="${esc(g.name)}">
+  const body=d.gOn?`${d.groups.map((g,gi)=>`<div class="gbox" style="border-left:5px solid ${GC[gi%GC.length]}"><input id="gn${gi}" data-m="gn:${gi}" type="text" placeholder="大枠の名前" value="${esc(g.name)}">
     ${d.noteOn?`<input id="gt${gi}" class="note" data-m="gt:${gi}" type="text" maxlength="200" placeholder="補足（任意）" value="${esc(g.note||"")}">`:""}
     <p class="small">含まれる項目を選択</p><div class="hgrid">${d.ent.map((e,i)=>`<button class="ent ${g.items.includes(i)?"on":""}" data-act="gtog" data-v="${gi}|${i}"><span class="nm">${esc(e.name||"（未入力）")}</span></button>`).join("")}</div>
     <div class="row"><span>倍率 <input id="go${gi}" data-m="go:${gi}" type="number" step="0.1" value="${g.odds??""}" style="width:90px"></span><button data-act="gauto" data-v="${gi}">オッズを自動算出</button><button class="red" data-act="gdel" data-v="${gi}">削除</button></div></div>`).join("")}<button data-act="gadd">大枠を追加</button><p class="small">自動算出：含まれる項目のオッズから、いずれかが当たる場合の倍率を計算して、倍率の欄に入れます（あとから手で直せます）。</p>`:"";
@@ -110,9 +111,9 @@ function propPanel(){const r=S.room,u=S.ui,isM=r.master===uid,P=Object.entries(r
   return h;}
 function propModal(){const u=S.ui;
   return `<div class="ov"><div class="balm"><div class="sign"><span>新規投票提案</span><button class="ab" data-act="prclose">閉じる</button></div>
-  <label>項目名<input id="in-pt" data-m="pt" maxlength="40" placeholder="例：部長が会議に遅刻する" value="${esc(u.pt)}"></label>
-  <label>倍率（空欄ならマスターにおまかせ）<input id="in-po" data-m="po" type="number" step="0.1" min="1.1" placeholder="例：3.5" value="${esc(u.po)}"></label>
-  <label>補足（任意）<input id="in-pn" data-m="pn" maxlength="200" placeholder="例：開始から5分以内に入室しなければ当たり" value="${esc(u.pn)}"></label>
+  <label>項目名<input id="in-pt" data-m="pt" maxlength="40" value="${esc(u.pt)}"></label>
+  <label>倍率（空欄ならマスターにおまかせ）<input id="in-po" data-m="po" type="number" step="0.1" min="1.1" value="${esc(u.po)}"></label>
+  <label>補足（任意）<input id="in-pn" data-m="pn" maxlength="200" value="${esc(u.pn)}"></label>
   <button class="primary" data-act="propsend" style="margin-top:10px">提案を送る</button><p class="small">送った提案はルームマスターに届き、認可されると、みんなが買える投票券に追加されます。</p></div></div>`;}
 const pubT=r=>`<div class="chk"><input type="checkbox" id="in-pub" data-m="pub" ${r.pubOpen?"checked":""}><label for="in-pub">購入中も他の人の馬券を見られるようにする</label></div>`;
 function allTickets(){const r=S.room,st=r.status,isM=r.master===uid;
@@ -207,19 +208,19 @@ function setup(){const r=S.room;
   const rl=isRl(),d=S.ui.draft||(S.ui.draft={title:r.title||"",ent:ents().map(e=>({name:e.name,odds:e.odds,w:e.w??"",j:e.j??jit(),note:e.note||""})),rate:r.rate??1,mode:r.pmode?"prob":"odds",ed:r.ed==null?"":String(r.ed),noteOn:ents().some(e=>e.note),placeN:r.placeN===2?2:3,gOn:!!(r.groups&&r.groups.length),groups:(r.groups||[]).map(g=>({name:g.name,note:g.note||"",odds:g.odds,items:[...(g.items||[])]}))}),pm=d.mode==="prob",od=pm?draftOdds(d):[];
   return `<div class="card"><h2>${rl?"選択肢と払戻倍率":"出走馬とオッズ"}</h2>
   <label>タイトル<input id="in-title" data-m="title" value="${esc(d.title)}"></label>
-  <label>レース名の上の行（第◯回 など自由入力。空欄なら「第N回」）<input id="in-ed" data-m="ed" type="text" placeholder="例：第57回（GII）" value="${esc(d.ed)}"></label>
+  <label>レース名の上の行（第◯回 など自由入力。空欄なら「第N回」）<input id="in-ed" data-m="ed" type="text" value="${esc(d.ed)}"></label>
   <div class="bulkbox"><b>まとめて入力</b>
-  <textarea id="in-bulk" class="bulk" data-m="bulk" rows="6" placeholder="第一回（GII）、天皇賞&#10;あいうえお、2.1、補足の例&#10;かきくけこ、3.2、補足の例&#10;さしすせそ、5.9">\n${esc(d.bulk||"")}</textarea>
+  <textarea id="in-bulk" class="bulk" data-m="bulk" rows="6">\n${esc(d.bulk||"")}</textarea>
   <div class="row"><button data-act="bulkapply">自動入力</button><span class="small">${esc(d.bulkMsg||"")}</span></div>
   <p class="small">1行目：「サブタイトル、タイトル」（区切りが無ければタイトルのみ。サブタイトルはレース名の上の行に入ります）<br>2行目以降：「名前、${pm?"勝率":rl?"倍率":"オッズ"}、補足（省略可）」を1行に1つ。区切りは「、」「,」タブが使えます。押すと、下の出走馬の一覧がこの内容に置き換わります。</p></div>
   <div class="tabs"><button class="tab ${pm?"":"on"}" data-act="smode" data-v="odds">オッズで入力</button><button class="tab ${pm?"on":""}" data-act="smode" data-v="prob">勝率で入力（オッズを自動計算）</button></div>
   ${pm?`<p class="hint">${rl?"それぞれが当たる確率(%)を入力":"なんとなくの勝ちやすさを数字で入力（合計100でなくてOK。大きいほど有力）"}<br>オッズには±8%ほどの揺らぎが自動で入ります <button class="gray" data-act="reroll">揺らぎを再抽選</button> <button class="gray" data-act="unjit">揺らぎを解除</button></p>`:""}
   <div class="chk"><input type="checkbox" id="in-noteon" data-m="noteon" ${d.noteOn?"checked":""}><label for="in-noteon">${rl?"各選択肢":"各馬"}の補足欄を使う（出馬表に小さく表示。馬券やボタンには出ません）</label></div>
   <div class="erows"><div class="erow eh${pm?" pm":""}"><span></span><span>名前</span><span>${pm?"勝率":rl?"倍率":"単勝オッズ"}</span>${pm?"<span>オッズ</span>":""}<span></span></div>
-  ${d.ent.map((e,i)=>`<div class="erow${pm?" pm":""}"><span class="en">${rl?i+1:num(i)}</span><input id="en${i}" data-m="en:${i}" placeholder="名前" value="${esc(e.name)}">
+  ${d.ent.map((e,i)=>`<div class="erow${pm?" pm":""}"><span class="en">${rl?i+1:num(i,d.ent.length)}</span><input id="en${i}" data-m="en:${i}" placeholder="名前" value="${esc(e.name)}">
   ${pm?`<input id="ew${i}" data-m="ew:${i}" type="number" step="any" min="0" value="${e.w??""}"><b id="od${i}" class="odv">${od[i]>=1.1?od[i].toFixed(1):"-"}</b>`
   :`<input id="eo${i}" data-m="eo:${i}" type="number" step="0.1" value="${e.odds??""}">`}
-  <button class="red dl" data-act="delent" data-v="${i}">削除</button>${d.noteOn?`<input id="et${i}" class="note en2" data-m="et:${i}" type="text" maxlength="200" placeholder="補足（任意）例：前走1着・逃げ馬" value="${esc(e.note||"")}">`:""}</div>`).join("")}</div>
+  <button class="red dl" data-act="delent" data-v="${i}">削除</button>${d.noteOn?`<input id="et${i}" class="note en2" data-m="et:${i}" type="text" maxlength="200" placeholder="補足（任意）" value="${esc(e.note||"")}">`:""}</div>`).join("")}</div>
   <button data-act="addent">追加</button><button class="gray" data-act="clr">出走馬・オッズをクリア</button>
   ${rl?groupSetup(d):`<div class="tabs">複勝の的中範囲　<button class="tab ${d.placeN!==2?"on":""}" data-act="plc" data-v="3">3着以内</button><button class="tab ${d.placeN===2?"on":""}" data-act="plc" data-v="2">2着以内</button></div><p class="small">複勝のオッズも、選んだ範囲に合わせて自動で計算します。</p>`}
   <label>払戻率（0.5〜1）<input id="in-rate" data-m="rate" type="number" step="0.01" value="${d.rate}"></label>
@@ -294,7 +295,7 @@ function oddsTable(){if(isRl()||S.room.status==="setup")return "";const u=S.ui,O
 
 function payTable(res,A){const rows=[],p=o=>yen(Math.floor(o*10)*10);
   if(isRl()){(res.wins||[]).forEach(i=>rows.push(["当たり",esc(ents()[i].name),ents()[i].odds]));(S.room.groups||[]).filter(g=>g.items.some(i=>(res.wins||[]).includes(i))).forEach(g=>rows.push(["大枠",esc(g.name),g.odds]));}
-  else{const O=odds(),[a,b,c]=res.order,add=(t,s)=>rows.push([TYPES[t].n,s.map(num).join(TYPES[t].o?" → ":" ・ "),O[t][key(t,s)]]);
+  else{const O=odds(),[a,b,c]=res.order,add=(t,s)=>rows.push([TYPES[t].n,s.map(x=>num(x)).join(TYPES[t].o?" → ":" ・ "),O[t][key(t,s)]]);
     add("win",[a]);[a,b,c].slice(0,S.room.placeN===2?2:3).forEach(x=>add("place",[x]));add("quinella",[a,b]);add("exacta",[a,b]);add("wide",[a,b]);add("wide",[a,c]);add("wide",[b,c]);add("trio",[a,b,c]);add("trifecta",[a,b,c]);}
   if(!rows.length)return "";
   return `<div class="${A?"rv":""}" style="animation-delay:5.4s"><h3 style="margin-top:14px">払戻金（100円あたり）</h3><table><tr><th>券種</th><th>組番</th><th>払戻金</th></tr>
@@ -456,7 +457,7 @@ const acts={
     for(const id of ids)await runTransaction(ref(db,`rooms/${S.code}/players/${id}/${f}`),b=>Math.max(0,(b||0)+sg*n));
     u.balmsg=`${ids.length}人の${f==="balance"?"残高":"借入"}を ${yen(n)} ${sg>0?"追加":"削除"}しました`;u.ga="";render();},
   muldebt:async()=>{const u=S.ui,t=String(u.mul).trim(),n=Number(t),ids=u.bsel.filter(id=>(S.room.players||{})[id]);if(!ids.length)return alert("操作する参加者にチェックを入れてください");
-    if(t===""||!(n>=0)||!isFinite(n))return alert("倍率を数字で入力してください（例：1.5）");
+    if(t===""||!(n>=0)||!isFinite(n))return alert("倍率を数字で入力してください");
     for(const id of ids)await runTransaction(ref(db,`rooms/${S.code}/players/${id}/debt`),b=>Math.round((b||0)*n));
     u.balmsg=`${ids.length}人の借入を ×${n} にしました`;u.mul="";render();},
   balopen:()=>{S.ui.balm=true;S.ui.balmsg="";render();},balclose:()=>{S.ui.balm=false;render();},
