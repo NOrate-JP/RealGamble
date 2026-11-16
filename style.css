@@ -174,3 +174,7 @@ html,body,button,input,select,textarea{font-family:"Noto Sans JP",sans-serif}
 .two{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 .bt2 .small{white-space:nowrap}
 .pp{border-top:1px solid #e6ece7;padding:8px 0}.pp:first-of-type{border-top:none}
+
+.prop-wrap{margin:30px 0 16px;padding-top:18px;border-top:2px dashed #cfd6d1}
+button.prop-btn{background:linear-gradient(#7d5cf7,#5a3dd0);color:#fff;border:0;font-weight:700;font-size:15px;letter-spacing:.04em;padding:12px 22px;margin:0;border-radius:26px;box-shadow:0 3px 8px rgba(90,61,208,.45)}
+button.prop-btn:hover{filter:brightness(1.1);background:linear-gradient(#7d5cf7,#5a3dd0)}

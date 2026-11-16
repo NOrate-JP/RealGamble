@@ -268,7 +268,7 @@ function betForm(){const u=S.ui,rl=isRl(),t=rl?"r":u.type,T=TYPES[t],k=T?T.k:1,m
   ${t&&m==="formation"?`<div class="tabs">${(T.o?["1着","2着","3着"]:["1頭目","2頭目","3頭目"]).slice(0,k).map((l,j)=>`<button class="tab ${u.ft===j?"on":""}" data-act="fcol" data-v="${j}">${l}${u.fm[j].length?`（${u.fm[j].map(x=>x+1).join(",")}）`:""}</button>`).join("")}</div>`:""}
   ${t?`<div class="hgrid">${ents().map(btn).join("")}</div>`:""}
   ${rl&&(S.room.groups||[]).length?`<p class="hint">大枠（含まれる項目のどれかが当たれば的中）</p><div class="hgrid">${S.room.groups.map((g,gi)=>`<button class="ent ${u.gsel===gi?"on":""}" data-act="gpickb" data-v="${gi}" title="${esc(g.name)}"><span class="nm">${esc(g.name)}</span><i>×${g.odds.toFixed(1)}</i></button>`).join("")}</div>`:""}
-  ${S.room.type==="proposal"&&S.room.status==="open"?`<div style="margin:10px 0"><button data-act="propopen">＋新規投票提案</button><span class="small">　賭けたい項目を思いついたら、マスターに提案できます</span></div>`:""}
+  ${S.room.type==="proposal"&&S.room.status==="open"?`<div class="prop-wrap"><button class="prop-btn" data-act="propopen">＋新規投票提案</button><div class="small" style="margin-top:6px">賭けたい項目を思いついたら、マスターに提案できます</div></div>`:""}
   ${S.room.limOn&&S.room.limN>=1?`<p class="small">購入は${S.room.limN}枚まで（残り ${Math.max(0,S.room.limN-Object.values(S.room.tickets||{}).filter(t=>t.uid===uid).length)}枚）</p>`:""}
   <div class="row"><span>1点あたり <input id="in-stake" data-m="stake" type="number" step="100" min="100" placeholder="100円単位" value="${u.stake}"></span></div>
   <div class="row" style="gap:10px 18px"><span>点数 <b id="b-n">${bs.n}</b></span><span>合計 <b id="b-tot">${bs.tot}</b></span><span>オッズ <b id="b-od">${bs.od}</b></span><span>的中時(1点) <b id="b-pay">${bs.pay}</b></span></div>
